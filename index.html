@@ -1,952 +1,229 @@
+```html
 <!DOCTYPE html>
 <html lang="th">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>Work Hours Dashboard</title>
-
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Driver Rest Hours Dashboard</title>
 <style>
-* {
-    box-sizing: border-box;
-}
-
-body {
-    margin: 0;
-    font-family: Arial, "Noto Sans Thai", sans-serif;
-    background: #f4f7fb;
-    color: #172033;
-}
-
-.header {
-    background: #172554;
-    color: white;
-    padding: 24px 30px;
-}
-
-.header h1 {
-    margin: 0 0 6px;
-    font-size: 28px;
-}
-
-.header p {
-    margin: 0;
-    opacity: .85;
-}
-
-.container {
-    max-width: 1400px;
-    margin: auto;
-    padding: 24px;
-}
-
-.upload-box {
-    background: white;
-    border-radius: 14px;
-    padding: 20px;
-    margin-bottom: 20px;
-    box-shadow: 0 3px 12px rgba(0,0,0,.06);
-}
-
-.upload-box h2 {
-    margin-top: 0;
-}
-
-input[type="file"] {
-    padding: 10px;
-    width: 100%;
-}
-
-.kpis {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 16px;
-    margin-bottom: 20px;
-}
-
-.kpi {
-    background: white;
-    padding: 20px;
-    border-radius: 14px;
-    box-shadow: 0 3px 12px rgba(0,0,0,.06);
-}
-
-.kpi-title {
-    font-size: 14px;
-    color: #667085;
-    margin-bottom: 8px;
-}
-
-.kpi-value {
-    font-size: 30px;
-    font-weight: bold;
-}
-
-.green {
-    color: #15803d;
-}
-
-.red {
-    color: #dc2626;
-}
-
-.blue {
-    color: #2563eb;
-}
-
-.filters {
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-    background: white;
-    padding: 18px;
-    border-radius: 14px;
-    margin-bottom: 20px;
-}
-
-.filters input,
-.filters select {
-    padding: 11px 13px;
-    border: 1px solid #d0d5dd;
-    border-radius: 8px;
-    font-size: 14px;
-}
-
-.table-box {
-    background: white;
-    border-radius: 14px;
-    overflow: hidden;
-    box-shadow: 0 3px 12px rgba(0,0,0,.06);
-}
-
-.table-title {
-    padding: 18px 20px;
-    font-weight: bold;
-    font-size: 18px;
-}
-
-.table-wrap {
-    overflow-x: auto;
-}
-
-table {
-    width: 100%;
-    border-collapse: collapse;
-    min-width: 900px;
-}
-
-th {
-    background: #f1f5f9;
-    padding: 13px;
-    text-align: left;
-    font-size: 13px;
-    color: #475467;
-}
-
-td {
-    padding: 13px;
-    border-top: 1px solid #eaecf0;
-    font-size: 14px;
-}
-
-.badge {
-    display: inline-block;
-    padding: 6px 10px;
-    border-radius: 999px;
-    font-size: 12px;
-    font-weight: bold;
-}
-
-.badge-pass {
-    background: #dcfce7;
-    color: #166534;
-}
-
-.badge-fail {
-    background: #fee2e2;
-    color: #991b1b;
-}
-
-.message {
-    padding: 15px;
-    border-radius: 10px;
-    margin-top: 12px;
-    display: none;
-}
-
-.message.error {
-    display: block;
-    background: #fee2e2;
-    color: #991b1b;
-}
-
-.message.success {
-    display: block;
-    background: #dcfce7;
-    color: #166534;
-}
-
-.empty {
-    text-align: center;
-    padding: 50px;
-    color: #667085;
-}
-
-@media (max-width: 900px) {
-    .kpis {
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
-
-@media (max-width: 600px) {
-    .container {
-        padding: 14px;
-    }
-
-    .kpis {
-        grid-template-columns: 1fr;
-    }
-
-    .header {
-        padding: 20px;
-    }
-
-    .header h1 {
-        font-size: 23px;
-    }
-}
+body{font-family:Arial,sans-serif;background:#f4f6f9;margin:0;padding:20px;color:#1f2937}
+main{max-width:1200px;margin:auto}
+h1{font-size:26px}
+.note{color:#64748b}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:20px 0}
+.card,section{background:white;padding:18px;border-radius:12px;box-shadow:0 2px 8px #0000000d}
+.num{font-size:28px;font-weight:bold;margin-top:8px}
+.controls{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0}
+input,select,button{padding:10px;border:1px solid #cbd5e1;border-radius:7px;background:white}
+button{cursor:pointer}
+.tablewrap{overflow-x:auto;background:white;border-radius:10px}
+table{border-collapse:collapse;width:100%;min-width:750px}
+th,td{text-align:left;padding:11px;border-bottom:1px solid #e5e7eb}
+th{background:#edf2f7}
+.pass{color:#15803d;font-weight:bold}
+.fail{color:#dc2626;font-weight:bold}
+footer{margin-top:20px;font-size:13px;color:#64748b}
 </style>
 </head>
-
 <body>
+<main>
+<h1>Driver Rest Hours Dashboard</h1>
+<p class="note">ตรวจสอบเวลาพักระหว่างงาน — ต้องพักอย่างน้อย 10 ชั่วโมง</p>
+<p id="message">กำลังโหลดข้อมูลจาก Google Sheets...</p>
+<button id="reload">รีเฟรชข้อมูล</button>
 
-<div class="header">
-    <h1>🚍 Driver Rest Hours Dashboard</h1>
-    <p>ตรวจสอบเวลาพักของ พขร. ระหว่างงาน — ต้องพักอย่างน้อย 10 ชั่วโมง</p>
+<div class="cards">
+  <div class="card">พขร.ทั้งหมด<div class="num" id="drivers">0</div></div>
+  <div class="card">รอบพักผ่าน (≥10 ชม.)<div class="num" id="passed">0</div></div>
+  <div class="card">รอบพักไม่ผ่าน (&lt;10 ชม.)<div class="num" id="failed">0</div></div>
+  <div class="card">อัตราผ่าน<div class="num" id="rate">0%</div></div>
 </div>
 
-<div class="container">
-
-    <div class="upload-box">
-        <h2>📂 โหลดข้อมูล</h2>
-
-        <p>
-            เลือกไฟล์ CSV ที่ export จาก Excel หรือ Google Sheets
-        </p>
-
-        <input type="file" id="fileInput" accept=".csv">
-
-        <div id="message" class="message"></div>
-
-        <p style="font-size:13px;color:#667085;margin-bottom:0;">
-            ระบบใช้คอลัมน์: E = ชื่อ พขร. / N = เวลาเริ่ม / O = เวลาจบ / R = สาขา
-        </p>
-    </div>
-
-    <div class="kpis">
-
-        <div class="kpi">
-            <div class="kpi-title">👤 พขร. ทั้งหมด</div>
-            <div id="totalDrivers" class="kpi-value blue">0</div>
-        </div>
-
-        <div class="kpi">
-            <div class="kpi-title">🟢 พักครบ ≥ 10 ชม.</div>
-            <div id="passCount" class="kpi-value green">0</div>
-        </div>
-
-        <div class="kpi">
-            <div class="kpi-title">🔴 พักไม่ถึง 10 ชม.</div>
-            <div id="failCount" class="kpi-value red">0</div>
-        </div>
-
-        <div class="kpi">
-            <div class="kpi-title">📊 อัตราผ่าน</div>
-            <div id="passRate" class="kpi-value">0%</div>
-        </div>
-
-    </div>
-
-    <div class="filters">
-
-        <input
-            type="text"
-            id="search"
-            placeholder="🔎 ค้นหาชื่อ พขร."
-        >
-
-        <select id="statusFilter">
-            <option value="ALL">ทั้งหมด</option>
-            <option value="PASS">ผ่าน ≥ 10 ชม.</option>
-            <option value="FAIL">ไม่ผ่าน < 10 ชม.</option>
-        </select>
-
-        <select id="branchFilter">
-            <option value="ALL">ทุกสาขา</option>
-        </select>
-
-    </div>
-
-    <div class="table-box">
-
-        <div class="table-title">
-            📋 รายละเอียดเวลาพัก
-        </div>
-
-        <div class="table-wrap">
-
-            <table>
-
-                <thead>
-                    <tr>
-                        <th>พขร.</th>
-                        <th>สาขา</th>
-                        <th>จบงานก่อนหน้า</th>
-                        <th>เริ่มงานถัดไป</th>
-                        <th>เวลาพัก</th>
-                        <th>สถานะ</th>
-                    </tr>
-                </thead>
-
-                <tbody id="tableBody">
-
-                    <tr>
-                        <td colspan="6" class="empty">
-                            กรุณาเลือกไฟล์ CSV เพื่อเริ่มต้น
-                        </td>
-                    </tr>
-
-                </tbody>
-
-            </table>
-
-        </div>
-    </div>
-
+<section>
+<div class="controls">
+<input id="search" placeholder="ค้นหาชื่อ พขร.">
+<select id="status">
+<option value="all">ทุกสถานะ</option>
+<option value="ผ่าน">ผ่าน</option>
+<option value="ไม่ผ่าน">ไม่ผ่าน</option>
+</select>
+<select id="branch">
+<option value="all">ทุกสาขา</option>
+</select>
 </div>
-
+<div class="tablewrap">
+<table>
+<thead><tr>
+<th>พขร.</th><th>สาขา</th><th>จบงานก่อนหน้า</th>
+<th>เริ่มงานถัดไป</th><th>เวลาพัก</th><th>สถานะ</th>
+</tr></thead>
+<tbody id="rows"></tbody>
+</table>
+</div>
+</section>
+<footer>ข้อมูลโหลดจาก Google Sheets ที่เผยแพร่เป็น CSV</footer>
+</main>
 
 <script>
+const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSWLQuTDK81qBHrVGIrbfLMQd2SbGcmeVPqgnd5RNzIKEYFYgenm6kofz8bzaLI-wmSnY6oZE8759Vy/pub?output=csv";
 
-const fileInput = document.getElementById("fileInput");
-const tableBody = document.getElementById("tableBody");
-
-const totalDrivers = document.getElementById("totalDrivers");
-const passCount = document.getElementById("passCount");
-const failCount = document.getElementById("failCount");
-const passRate = document.getElementById("passRate");
-
-const searchInput = document.getElementById("search");
-const statusFilter = document.getElementById("statusFilter");
-const branchFilter = document.getElementById("branchFilter");
-
-const message = document.getElementById("message");
-
-let restRecords = [];
-
-
-/* =========================
-   อ่านไฟล์ CSV
-========================= */
-
-fileInput.addEventListener("change", function(event) {
-
-    const file = event.target.files[0];
-
-    if (!file) return;
-
-    const reader = new FileReader();
-
-    reader.onload = function(e) {
-
-        try {
-
-            const text = e.target.result;
-
-            const rows = parseCSV(text);
-
-            if (rows.length < 2) {
-                throw new Error("ไม่พบข้อมูลในไฟล์ CSV");
-            }
-
-            processData(rows);
-
-            showMessage(
-                "โหลดข้อมูลสำเร็จแล้ว",
-                "success"
-            );
-
-        } catch (error) {
-
-            console.error(error);
-
-            showMessage(
-                "เกิดข้อผิดพลาด: " + error.message,
-                "error"
-            );
-
-        }
-
-    };
-
-    reader.readAsText(file, "UTF-8");
-
-});
-
-
-/* =========================
-   CSV Parser
-========================= */
+let records = [];
+let restRows = [];
 
 function parseCSV(text) {
-
-    const rows = [];
-
-    let row = [];
-    let cell = "";
-    let insideQuotes = false;
-
-    for (let i = 0; i < text.length; i++) {
-
-        const char = text[i];
-        const next = text[i + 1];
-
-        if (char === '"' && insideQuotes && next === '"') {
-
-            cell += '"';
-            i++;
-
-        }
-
-        else if (char === '"') {
-
-            insideQuotes = !insideQuotes;
-
-        }
-
-        else if (char === "," && !insideQuotes) {
-
-            row.push(cell.trim());
-            cell = "";
-
-        }
-
-        else if (
-            (char === "\n" || char === "\r") &&
-            !insideQuotes
-        ) {
-
-            if (cell !== "" || row.length > 0) {
-
-                row.push(cell.trim());
-
-                rows.push(row);
-
-                row = [];
-                cell = "";
-
-            }
-
-            if (char === "\r" && next === "\n") {
-                i++;
-            }
-
-        }
-
-        else {
-
-            cell += char;
-
-        }
-
-    }
-
-    if (cell !== "" || row.length > 0) {
-
-        row.push(cell.trim());
-        rows.push(row);
-
-    }
-
-    return rows;
-
+  const rows = [];
+  let row = [], cell = "", quoted = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i], next = text[i + 1];
+    if (c === '"' && quoted && next === '"') { cell += '"'; i++; }
+    else if (c === '"') quoted = !quoted;
+    else if (c === ',' && !quoted) { row.push(cell); cell = ""; }
+    else if ((c === '\n' || c === '\r') && !quoted) {
+      if (c === '\r' && next === '\n') i++;
+      row.push(cell);
+      if (row.some(v => v.trim() !== "")) rows.push(row);
+      row = []; cell = "";
+    } else cell += c;
+  }
+  row.push(cell);
+  if (row.some(v => v.trim() !== "")) rows.push(row);
+  return rows;
 }
-
-
-/* =========================
-   ประมวลผลข้อมูล
-========================= */
-
-function processData(rows) {
-
-    /*
-        Excel column:
-        E = index 4
-        N = index 13
-        O = index 14
-        R = index 17
-    */
-
-    const data = [];
-
-    for (let i = 1; i < rows.length; i++) {
-
-        const row = rows[i];
-
-        const driver = row[4] || "";
-        const start = row[13] || "";
-        const end = row[14] || "";
-        const branch = row[17] || "";
-
-        if (!driver || !start || !end) {
-            continue;
-        }
-
-        const startDate = parseDate(start);
-        const endDate = parseDate(end);
-
-        if (!startDate || !endDate) {
-            continue;
-        }
-
-        data.push({
-
-            driver: driver.trim(),
-
-            branch: branch.trim(),
-
-            start: startDate,
-
-            end: endDate
-
-        });
-
-    }
-
-    /*
-       เรียงตาม พขร. และเวลาเริ่มงาน
-    */
-
-    data.sort(function(a,b) {
-
-        const driverCompare =
-            a.driver.localeCompare(
-                b.driver,
-                "th"
-            );
-
-        if (driverCompare !== 0) {
-            return driverCompare;
-        }
-
-        return a.start - b.start;
-
-    });
-
-
-    /*
-       คำนวณเวลาพัก
-    */
-
-    restRecords = [];
-
-    for (let i = 0; i < data.length - 1; i++) {
-
-        const current = data[i];
-        const next = data[i + 1];
-
-        /*
-           ต้องเป็น พขร. คนเดียวกัน
-        */
-
-        if (
-            current.driver.toLowerCase() !==
-            next.driver.toLowerCase()
-        ) {
-            continue;
-        }
-
-        const restMilliseconds =
-            next.start.getTime() -
-            current.end.getTime();
-
-        /*
-           ถ้าค่าติดลบ ให้ข้าม
-        */
-
-        if (restMilliseconds < 0) {
-            continue;
-        }
-
-        const restHours =
-            restMilliseconds / 3600000;
-
-        restRecords.push({
-
-            driver: current.driver,
-
-            branch: current.branch || next.branch,
-
-            previousEnd: current.end,
-
-            nextStart: next.start,
-
-            restHours: restHours,
-
-            pass: restHours >= 10
-
-        });
-
-    }
-
-    updateBranchFilter();
-
-    render();
-
-}
-
-
-/* =========================
-   แปลงวันที่
-========================= */
 
 function parseDate(value) {
-
-    if (!value) return null;
-
-    value = value.trim();
-
-    /*
-       รองรับรูปแบบ:
-       2026-10-02 18:30:00
-       2026/10/02 18:30:00
-       02/10/2026 18:30:00
-    */
-
-    let d = new Date(value);
-
-    if (!isNaN(d.getTime())) {
-        return d;
-    }
-
-    /*
-       รองรับ DD/MM/YYYY
-    */
-
-    const match =
-        value.match(
-            /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/
-        );
-
-    if (match) {
-
-        const day = Number(match[1]);
-        const month = Number(match[2]) - 1;
-        const year = Number(match[3]);
-
-        const hour = Number(match[4] || 0);
-        const minute = Number(match[5] || 0);
-        const second = Number(match[6] || 0);
-
-        return new Date(
-            year,
-            month,
-            day,
-            hour,
-            minute,
-            second
-        );
-
-    }
-
-    return null;
-
+  if (!value) return null;
+  let s = String(value).trim().replace(/^"|"$/g, "");
+  // รูปแบบวันที่และเวลาที่พบบ่อยใน Google Sheets
+  let m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[ ,T]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+  if (m) {
+    let a = +m[1], b = +m[2], year = +m[3];
+    // รองรับปี พ.ศ.
+    if (year > 2400) year -= 543;
+    // ถ้าส่วนแรกเกิน 12 ถือว่าเป็นวัน/เดือน/ปี
+    let day, month;
+    if (a > 12) { day = a; month = b; }
+    else if (b > 12) { month = a; day = b; }
+    else { day = a; month = b; }
+    return new Date(year, month - 1, day, +(m[4] || 0), +(m[5] || 0), +(m[6] || 0));
+  }
+  // รูปแบบ YYYY-MM-DD หรือ ISO
+  m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if (m) {
+    let year = +m[1]; if (year > 2400) year -= 543;
+    return new Date(year, +m[2]-1, +m[3], +(m[4]||0), +(m[5]||0), +(m[6]||0));
+  }
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? null : d;
 }
 
+function loadData() {
+  const url = CSV_URL + "&_=" + Date.now();
+  document.getElementById("message").textContent = "กำลังโหลดข้อมูล...";
+  fetch(url)
+    .then(r => {
+      if (!r.ok) throw new Error("โหลดข้อมูลไม่สำเร็จ");
+      return r.text();
+    })
+    .then(text => {
+      const data = parseCSV(text);
+      if (data.length < 2) throw new Error("ไม่พบข้อมูลใน CSV");
+      records = data.slice(1).map((r, index) => ({
+        driver: (r[4] || "").trim(),
+        startRaw: (r[13] || "").trim(),
+        endRaw: (r[14] || "").trim(),
+        branch: (r[17] || "").trim(),
+        index
+      })).filter(r => r.driver && r.startRaw && r.endRaw)
+        .map(r => ({...r, start: parseDate(r.startRaw), end: parseDate(r.endRaw)}))
+        .filter(r => r.start && r.end && r.end >= r.start);
 
-/* =========================
-   Render Dashboard
-========================= */
-
-function render() {
-
-    const search =
-        searchInput.value
-            .trim()
-            .toLowerCase();
-
-    const status =
-        statusFilter.value;
-
-    const branch =
-        branchFilter.value;
-
-
-    const filtered =
-        restRecords.filter(function(record) {
-
-            const searchOK =
-                !search ||
-                record.driver
-                    .toLowerCase()
-                    .includes(search);
-
-            const statusOK =
-                status === "ALL" ||
-                (status === "PASS" && record.pass) ||
-                (status === "FAIL" && !record.pass);
-
-            const branchOK =
-                branch === "ALL" ||
-                record.branch === branch;
-
-            return (
-                searchOK &&
-                statusOK &&
-                branchOK
-            );
-
+      records.sort((a,b) => a.driver.localeCompare(b.driver, "th") || a.start - b.start);
+      restRows = [];
+      for (let i = 0; i < records.length - 1; i++) {
+        const current = records[i], next = records[i+1];
+        if (current.driver !== next.driver) continue;
+        const ms = next.start - current.end;
+        if (ms < 0) continue;
+        restRows.push({
+          driver: current.driver,
+          branch: next.branch || current.branch,
+          previousEnd: current.end,
+          nextStart: next.start,
+          ms,
+          status: ms >= 10*60*60*1000 ? "ผ่าน" : "ไม่ผ่าน"
         });
-
-
-    /*
-       KPI
-    */
-
-    const drivers =
-        new Set(
-            restRecords.map(r => r.driver)
-        );
-
-    const pass =
-        restRecords.filter(r => r.pass).length;
-
-    const fail =
-        restRecords.filter(r => !r.pass).length;
-
-    const total =
-        pass + fail;
-
-    totalDrivers.textContent =
-        drivers.size;
-
-    passCount.textContent =
-        pass;
-
-    failCount.textContent =
-        fail;
-
-    passRate.textContent =
-        total > 0
-            ? ((pass / total) * 100).toFixed(1) + "%"
-            : "0%";
-
-
-    /*
-       ตาราง
-    */
-
-    tableBody.innerHTML = "";
-
-    if (filtered.length === 0) {
-
-        tableBody.innerHTML = `
-            <tr>
-                <td colspan="6" class="empty">
-                    ไม่พบข้อมูล
-                </td>
-            </tr>
-        `;
-
-        return;
-
-    }
-
-
-    filtered.forEach(function(record) {
-
-        const tr =
-            document.createElement("tr");
-
-        const restText =
-            formatDuration(record.restHours);
-
-        const statusHTML =
-            record.pass
-
-            ? `<span class="badge badge-pass">
-                🟢 ผ่าน
-               </span>`
-
-            : `<span class="badge badge-fail">
-                🔴 ไม่ผ่าน
-               </span>`;
-
-
-        tr.innerHTML = `
-
-            <td>
-                <strong>${escapeHTML(record.driver)}</strong>
-            </td>
-
-            <td>
-                ${escapeHTML(record.branch || "-")}
-            </td>
-
-            <td>
-                ${formatDate(record.previousEnd)}
-            </td>
-
-            <td>
-                ${formatDate(record.nextStart)}
-            </td>
-
-            <td>
-                <strong>${restText}</strong>
-            </td>
-
-            <td>
-                ${statusHTML}
-            </td>
-
-        `;
-
-        tableBody.appendChild(tr);
-
+      }
+      updateBranches();
+      render();
+      document.getElementById("message").textContent =
+        `โหลดสำเร็จ ${records.length} รายการงาน · ${new Date().toLocaleTimeString("th-TH")}`;
+    })
+    .catch(err => {
+      document.getElementById("message").textContent =
+        "โหลดข้อมูลไม่สำเร็จ กรุณาตรวจสอบว่า Google Sheets เผยแพร่เป็น CSV แล้ว และลิงก์เปิดได้โดยไม่ต้องลงชื่อเข้าใช้";
+      console.error(err);
     });
-
 }
 
-
-/* =========================
-   Format เวลา
-========================= */
-
-function formatDuration(hours) {
-
-    const totalMinutes =
-        Math.floor(hours * 60);
-
-    const h =
-        Math.floor(totalMinutes / 60);
-
-    const m =
-        totalMinutes % 60;
-
-    return h + " ชม. " + m + " นาที";
-
+function duration(ms) {
+  const mins = Math.floor(ms / 60000);
+  return Math.floor(mins / 60) + " ชม. " + (mins % 60) + " นาที";
 }
-
-
-/* =========================
-   Format วันที่
-========================= */
-
-function formatDate(date) {
-
-    if (!date) return "-";
-
-    const day =
-        String(date.getDate()).padStart(2,"0");
-
-    const month =
-        String(date.getMonth() + 1).padStart(2,"0");
-
-    const year =
-        date.getFullYear();
-
-    const hour =
-        String(date.getHours()).padStart(2,"0");
-
-    const minute =
-        String(date.getMinutes()).padStart(2,"0");
-
-    return `${day}/${month}/${year} ${hour}:${minute}`;
-
+function dateText(d) {
+  return d.toLocaleString("th-TH", {
+    year:"numeric", month:"2-digit", day:"2-digit",
+    hour:"2-digit", minute:"2-digit", hour12:false
+  });
 }
-
-
-/* =========================
-   Branch Filter
-========================= */
-
-function updateBranchFilter() {
-
-    const branches =
-        [...new Set(
-            restRecords
-                .map(r => r.branch)
-                .filter(Boolean)
-        )].sort();
-
-    branchFilter.innerHTML =
-        `<option value="ALL">ทุกสาขา</option>`;
-
-    branches.forEach(function(branch) {
-
-        const option =
-            document.createElement("option");
-
-        option.value = branch;
-        option.textContent = branch;
-
-        branchFilter.appendChild(option);
-
-    });
-
+function updateBranches() {
+  const select = document.getElementById("branch");
+  const old = select.value;
+  const branches = [...new Set(restRows.map(r => r.branch).filter(Boolean))].sort();
+  select.innerHTML = '<option value="all">ทุกสาขา</option>';
+  branches.forEach(b => {
+    const opt = document.createElement("option");
+    opt.value = b; opt.textContent = b; select.appendChild(opt);
+  });
+  select.value = branches.includes(old) ? old : "all";
 }
+function render() {
+  const search = document.getElementById("search").value.trim().toLowerCase();
+  const status = document.getElementById("status").value;
+  const branch = document.getElementById("branch").value;
+  const drivers = new Set(records.map(r => r.driver));
+  document.getElementById("drivers").textContent = drivers.size;
+  document.getElementById("passed").textContent = restRows.filter(r => r.status === "ผ่าน").length;
+  document.getElementById("failed").textContent = restRows.filter(r => r.status === "ไม่ผ่าน").length;
+  const total = restRows.length;
+  document.getElementById("rate").textContent =
+    (total ? Math.round(restRows.filter(r => r.status === "ผ่าน").length / total * 100) : 0) + "%";
 
-
-/* =========================
-   Events
-========================= */
-
-searchInput.addEventListener(
-    "input",
-    render
-);
-
-statusFilter.addEventListener(
-    "change",
-    render
-);
-
-branchFilter.addEventListener(
-    "change",
-    render
-);
-
-
-/* =========================
-   Message
-========================= */
-
-function showMessage(text, type) {
-
-    message.textContent = text;
-
-    message.className =
-        "message " + type;
-
+  const filtered = restRows.filter(r =>
+    r.driver.toLowerCase().includes(search) &&
+    (status === "all" || r.status === status) &&
+    (branch === "all" || r.branch === branch)
+  );
+  document.getElementById("rows").innerHTML = filtered.map(r => `
+    <tr>
+      <td>${escapeHTML(r.driver)}</td>
+      <td>${escapeHTML(r.branch || "-")}</td>
+      <td>${dateText(r.previousEnd)}</td>
+      <td>${dateText(r.nextStart)}</td>
+      <td>${duration(r.ms)}</td>
+      <td class="${r.status === "ผ่าน" ? "pass" : "fail"}">${r.status}</td>
+    </tr>`).join("") || '<tr><td colspan="6">ไม่พบข้อมูลที่ตรงกับเงื่อนไข</td></tr>';
 }
-
-
-/* =========================
-   ป้องกัน HTML แปลกปลอม
-========================= */
-
-function escapeHTML(value) {
-
-    return String(value)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-
+function escapeHTML(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
+  })[c]);
 }
-
+document.getElementById("reload").addEventListener("click", loadData);
+document.getElementById("search").addEventListener("input", render);
+document.getElementById("status").addEventListener("change", render);
+document.getElementById("branch").addEventListener("change", render);
+loadData();
 </script>
-
 </body>
 </html>
+```

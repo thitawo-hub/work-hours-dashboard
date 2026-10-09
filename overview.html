@@ -4,17 +4,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Executive Dashboard | Fleet Overview</title>
-
+  <title>Executive Dashboard - รายงานแยกสาขา</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <style>
     :root {
-      --navy: #142b4a;
+      --navy: #172b4d;
       --blue: #2563eb;
       --bg: #f3f6fb;
+      --text: #172033;
       --muted: #64748b;
       --border: #e2e8f0;
+      --green: #059669;
+      --orange: #ea580c;
     }
 
     * { box-sizing: border-box; }
@@ -23,73 +25,119 @@
       margin: 0;
       font-family: "Segoe UI", Tahoma, sans-serif;
       background: var(--bg);
-      color: #172033;
+      color: var(--text);
     }
 
     header {
-      background: linear-gradient(120deg, #142b4a, #2457a7);
+      background: linear-gradient(120deg, #142b4a, #2859a7);
       color: white;
-      padding: 26px 30px;
+      padding: 28px 30px;
     }
 
     header h1 { margin: 0 0 8px; font-size: 27px; }
-    header p { margin: 0; color: #dbeafe; }
+    header p { margin: 0; color: #dbeafe; font-size: 14px; }
 
-    main {
-      max-width: 1500px;
-      margin: auto;
-      padding: 24px;
-    }
+    main { max-width: 1550px; margin: auto; padding: 24px; }
 
-    .toolbar, .panel, .kpi {
+    .panel, .kpi, .branch-heading {
       background: white;
       border: 1px solid var(--border);
       border-radius: 14px;
       box-shadow: 0 3px 12px #142b4a08;
     }
 
-    .toolbar {
+    .filters {
       display: flex;
       flex-wrap: wrap;
-      gap: 12px;
-      padding: 16px;
-      margin-bottom: 20px;
       align-items: end;
+      gap: 14px;
+      padding: 18px;
+      margin-bottom: 18px;
     }
 
-    .field { display: flex; flex-direction: column; gap: 6px; }
-    label { font-size: 12px; color: var(--muted); font-weight: 600; }
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      min-width: 145px;
+    }
+
+    .field.branch-field { min-width: 230px; flex: 1; }
+
+    label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
 
     select, input {
-      padding: 10px 12px;
-      min-width: 140px;
+      width: 100%;
+      padding: 11px 12px;
       border: 1px solid #cbd5e1;
       border-radius: 8px;
-      background: white;
       font: inherit;
+      background: white;
+      color: var(--text);
     }
 
     button {
       border: 0;
       border-radius: 8px;
-      padding: 11px 16px;
+      padding: 12px 16px;
       background: var(--blue);
       color: white;
       font-weight: 600;
       cursor: pointer;
     }
 
+    button:hover { background: #1d4ed8; }
+
+    .branch-heading {
+      padding: 20px 22px;
+      margin-bottom: 18px;
+      border-left: 5px solid var(--blue);
+    }
+
+    .branch-heading .eyebrow {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .branch-heading h2 {
+      margin: 0 0 8px;
+      font-size: 24px;
+      overflow-wrap: anywhere;
+    }
+
+    .branch-heading p {
+      color: var(--muted);
+      margin: 0;
+      font-size: 13px;
+    }
+
     .kpis {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 16px;
+      gap: 15px;
       margin-bottom: 20px;
     }
 
-    .kpi { padding: 19px; min-width: 0; }
-    .kpi .label { font-size: 13px; color: var(--muted); }
-    .kpi .value { font-size: 27px; font-weight: 750; margin: 12px 0 5px; overflow-wrap: anywhere; }
-    .kpi .note { color: var(--muted); font-size: 12px; }
+    .kpi { padding: 18px; min-width: 0; }
+
+    .kpi-label { color: var(--muted); font-size: 13px; }
+    .kpi-value {
+      margin: 13px 0 7px;
+      font-size: 27px;
+      font-weight: 750;
+      overflow-wrap: anywhere;
+    }
+    .kpi-note { color: var(--muted); font-size: 12px; }
+
+    .blue { border-top: 4px solid #3b82f6; }
+    .green { border-top: 4px solid #10b981; }
+    .orange { border-top: 4px solid #f59e0b; }
+    .purple { border-top: 4px solid #8b5cf6; }
 
     .charts {
       display: grid;
@@ -99,21 +147,25 @@
     }
 
     .panel { padding: 20px; min-width: 0; }
-    .panel h2 { font-size: 16px; margin: 0 0 16px; }
-    .chart-wrap { height: 300px; position: relative; }
+    .panel h3 { margin: 0 0 18px; font-size: 16px; }
+
+    .chart-wrap { position: relative; height: 310px; }
 
     .table-panel { padding: 20px; }
+
     .table-top {
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      flex-wrap: wrap;
+      justify-content: space-between;
       gap: 12px;
-      margin-bottom: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 15px;
     }
 
-    .table-top h2 { margin: 0; font-size: 16px; }
-    .table-scroll { overflow: auto; max-height: 520px; }
+    .table-top h3 { margin: 0; }
+    .search { max-width: 340px; }
+
+    .table-scroll { overflow: auto; max-height: 550px; }
 
     table {
       width: 100%;
@@ -129,30 +181,39 @@
     }
 
     th {
-      background: #f8fafc;
-      color: #475569;
       position: sticky;
       top: 0;
       z-index: 1;
+      background: #f8fafc;
+      color: #475569;
     }
 
-    .status { font-size: 13px; color: var(--muted); margin: 12px 0; }
-    .error { color: #b91c1c; }
-    .footer { color: var(--muted); font-size: 12px; padding: 20px 0; }
+    tbody tr:hover { background: #f8fbff; }
 
-    @media (max-width: 950px) {
+    .status { margin: 12px 0; font-size: 13px; color: var(--muted); }
+    .error { color: #b91c1c; }
+    .empty { text-align: center; color: var(--muted); padding: 28px; }
+
+    .footer {
+      color: var(--muted);
+      font-size: 12px;
+      padding: 20px 0 5px;
+      line-height: 1.7;
+    }
+
+    @media (max-width: 1000px) {
       .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .charts { grid-template-columns: 1fr; }
     }
 
-    @media (max-width: 520px) {
-      header { padding: 22px 18px; }
+    @media (max-width: 560px) {
+      header { padding: 22px 17px; }
       header h1 { font-size: 22px; }
-      main { padding: 14px; }
-      .kpis { gap: 10px; }
-      .kpi { padding: 14px; }
-      .kpi .value { font-size: 21px; }
-      .chart-wrap { height: 260px; }
+      main { padding: 12px; }
+      .kpi { padding: 13px; }
+      .kpi-value { font-size: 21px; }
+      .chart-wrap { height: 270px; }
+      .branch-heading h2 { font-size: 21px; }
     }
   </style>
 </head>
@@ -160,14 +221,23 @@
 <body>
 <header>
   <h1>Executive Dashboard</h1>
-  <p>ภาพรวมการเดินรถ ระยะทาง และค่าใช้จ่ายสะสมรายปี (YTD)</p>
+  <p>รายงานผู้บริหารแยกสาขา | Fleet Operations & Expense Overview</p>
 </header>
 
 <main>
-  <section class="toolbar">
+  <section class="panel filters">
+    <div class="field branch-field">
+      <label for="branchFilter">เลือกสาขา</label>
+      <select id="branchFilter">
+        <option value="">กำลังโหลดสาขา...</option>
+      </select>
+    </div>
+
     <div class="field">
       <label for="yearFilter">ปี</label>
-      <select id="yearFilter"><option value="all">ทุกปี</option></select>
+      <select id="yearFilter">
+        <option value="all">ทุกปี</option>
+      </select>
     </div>
 
     <div class="field">
@@ -189,85 +259,106 @@
       </select>
     </div>
 
-    <div class="field">
-      <label for="branchFilter">สาขา</label>
-      <select id="branchFilter"><option value="all">ทุกสาขา</option></select>
-    </div>
-
     <button id="resetBtn">ล้างตัวกรอง</button>
   </section>
 
   <div id="status" class="status">กำลังโหลดข้อมูลจาก Google Sheets...</div>
 
+  <section class="branch-heading">
+    <div class="eyebrow">รายงานสาขาที่เลือก</div>
+    <h2 id="selectedBranch">กำลังโหลดข้อมูล...</h2>
+    <p id="reportPeriod">สรุปผลการดำเนินงานตามช่วงเวลาที่เลือก</p>
+  </section>
+
   <section class="kpis">
-    <article class="kpi">
-      <div class="label">จำนวนเที่ยวรถ</div>
-      <div class="value" id="kpiTrips">—</div>
-      <div class="note">จำนวนรายการตามตัวกรอง</div>
+    <article class="kpi blue">
+      <div class="kpi-label">จำนวนเที่ยวรถ</div>
+      <div class="kpi-value" id="kpiTrips">—</div>
+      <div class="kpi-note">จำนวนรายการเดินรถ</div>
     </article>
-    <article class="kpi">
-      <div class="label">ระยะทางรวม</div>
-      <div class="value" id="kpiDistance">—</div>
-      <div class="note">กิโลเมตร</div>
+
+    <article class="kpi green">
+      <div class="kpi-label">ระยะทางรวม</div>
+      <div class="kpi-value" id="kpiDistance">—</div>
+      <div class="kpi-note">กิโลเมตร</div>
     </article>
-    <article class="kpi">
-      <div class="label">ค่าใช้จ่ายรวม</div>
-      <div class="value" id="kpiCost">—</div>
-      <div class="note">ค่าทางด่วน + ค่าห้องพัก + ค่าเดินทาง</div>
+
+    <article class="kpi orange">
+      <div class="kpi-label">ค่าใช้จ่ายรวม</div>
+      <div class="kpi-value" id="kpiCost">—</div>
+      <div class="kpi-note">ทางด่วน + ห้องพัก + ค่าเดินทาง</div>
     </article>
-    <article class="kpi">
-      <div class="label">ค่าใช้จ่ายเฉลี่ยต่อเที่ยว</div>
-      <div class="value" id="kpiAvg">—</div>
-      <div class="note">บาทต่อเที่ยว</div>
+
+    <article class="kpi purple">
+      <div class="kpi-label">ค่าใช้จ่ายเฉลี่ยต่อเที่ยว</div>
+      <div class="kpi-value" id="kpiAvgCost">—</div>
+      <div class="kpi-note">บาทต่อเที่ยว</div>
     </article>
-    <article class="kpi">
-      <div class="label">ค่าทางด่วน</div>
-      <div class="value" id="kpiToll">—</div>
-      <div class="note">บาท</div>
+
+    <article class="kpi blue">
+      <div class="kpi-label">ค่าทางด่วนรวม</div>
+      <div class="kpi-value" id="kpiToll">—</div>
+      <div class="kpi-note">บาท</div>
     </article>
-    <article class="kpi">
-      <div class="label">ค่าห้องพัก</div>
-      <div class="value" id="kpiHotel">—</div>
-      <div class="note">บาท</div>
+
+    <article class="kpi green">
+      <div class="kpi-label">ค่าห้องพักรวม</div>
+      <div class="kpi-value" id="kpiHotel">—</div>
+      <div class="kpi-note">บาท</div>
     </article>
-    <article class="kpi">
-      <div class="label">ค่าเดินทาง</div>
-      <div class="value" id="kpiTravel">—</div>
-      <div class="note">บาท</div>
+
+    <article class="kpi orange">
+      <div class="kpi-label">ค่าเดินทางรวม</div>
+      <div class="kpi-value" id="kpiTravel">—</div>
+      <div class="kpi-note">บาท</div>
     </article>
-    <article class="kpi">
-      <div class="label">ระยะทางเฉลี่ยต่อเที่ยว</div>
-      <div class="value" id="kpiAvgDistance">—</div>
-      <div class="note">กิโลเมตรต่อเที่ยว</div>
+
+    <article class="kpi purple">
+      <div class="kpi-label">ระยะทางเฉลี่ยต่อเที่ยว</div>
+      <div class="kpi-value" id="kpiAvgDistance">—</div>
+      <div class="kpi-note">กิโลเมตรต่อเที่ยว</div>
     </article>
   </section>
 
   <section class="charts">
     <article class="panel">
-      <h2>แนวโน้มจำนวนเที่ยวและระยะทางรายเดือน</h2>
-      <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
+      <h3>จำนวนเที่ยวและระยะทางรายเดือน</h3>
+      <div class="chart-wrap">
+        <canvas id="trendChart"></canvas>
+      </div>
     </article>
 
     <article class="panel">
-      <h2>ค่าใช้จ่ายรายเดือน</h2>
-      <div class="chart-wrap"><canvas id="costChart"></canvas></div>
+      <h3>ค่าใช้จ่ายรายเดือนแยกประเภท</h3>
+      <div class="chart-wrap">
+        <canvas id="costChart"></canvas>
+      </div>
     </article>
 
     <article class="panel">
-      <h2>สัดส่วนค่าใช้จ่าย</h2>
-      <div class="chart-wrap"><canvas id="costShareChart"></canvas></div>
+      <h3>สัดส่วนค่าใช้จ่ายของสาขา</h3>
+      <div class="chart-wrap">
+        <canvas id="shareChart"></canvas>
+      </div>
     </article>
 
     <article class="panel">
-      <h2>ระยะทางรวมแยกตามสาขา</h2>
-      <div class="chart-wrap"><canvas id="branchChart"></canvas></div>
+      <h3>ระยะทางแยกตามประเภทรถ</h3>
+      <div class="chart-wrap">
+        <canvas id="vehicleChart"></canvas>
+      </div>
     </article>
   </section>
 
   <section class="panel table-panel">
     <div class="table-top">
-      <h2>รายละเอียดรายการเดินรถ</h2>
-      <input id="searchInput" type="search" placeholder="ค้นหาทะเบียนรถ / คนขับ / ปลายทาง">
+      <h3>รายละเอียดเที่ยวรถของสาขา</h3>
+      <input
+        class="search"
+        id="searchInput"
+        type="search"
+        placeholder="ค้นหาทะเบียนรถ คนขับ หรือปลายทาง"
+      >
     </div>
 
     <div class="table-scroll">
@@ -275,50 +366,63 @@
         <thead>
           <tr>
             <th>วันที่</th>
-            <th>สาขา</th>
             <th>LTS</th>
             <th>ทะเบียนหัว</th>
             <th>เบอร์หาง</th>
             <th>พขร. หลัก</th>
             <th>พขร. เสริม</th>
             <th>ปลายทาง</th>
+            <th>ประเภทรถ</th>
             <th>ระยะทาง (กม.)</th>
             <th>ทางด่วน (บาท)</th>
             <th>ห้องพัก (บาท)</th>
             <th>เดินทาง (บาท)</th>
-            <th>รวมค่าใช้จ่าย (บาท)</th>
+            <th>รวม (บาท)</th>
           </tr>
         </thead>
         <tbody id="dataTable">
-          <tr><td colspan="13">กำลังโหลดข้อมูล...</td></tr>
+          <tr><td colspan="13" class="empty">กำลังโหลดข้อมูล...</td></tr>
         </tbody>
       </table>
     </div>
-    <div class="status" id="tableCount"></div>
+    <div id="tableCount" class="status"></div>
   </section>
 
-  <div class="footer">ข้อมูลอ้างอิงจาก Google Sheets · Dashboard แสดงผลตามตัวกรองที่เลือก</div>
+  <div class="footer">
+    แหล่งข้อมูล: Google Sheets — Combined_YTD<br>
+    ตัวเลข KPI และกราฟจะเปลี่ยนตามสาขา ปี และเดือนที่เลือก
+  </div>
 </main>
 
 <script>
-  // 1) นำ URL CSV ที่ได้จาก Google Sheets มาใส่ตรงนี้
-  const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSWLQuTDK81qBHrVGIrbfLMQd2SbGcmeVPqgnd5RNzIKEYFYgenm6kofz8bzaLI-wmSnY6oZE8759Vy/pub?gid=1490125939&single=true&output=csv";
+  // =====================================================
+  // ตั้งค่า: ใส่ URL CSV ที่เผยแพร่จาก Google Sheets
+  // =====================================================
+  const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSWLQuTDK81qBHrVGIrbfLMQd2SbGcmeVPqgnd5RNzIKEYFYgenm6kofz8bzaLI-wmSnY6oZE8759Vy/pubhtml?gid=1490125939&single=true";
 
   let allRows = [];
   let charts = {};
 
-  const money = n => Number(n || 0).toLocaleString("th-TH", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2
-  });
+  const MONTHS = [
+    "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.",
+    "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."
+  ];
 
-  const number = n => Number(n || 0).toLocaleString("th-TH", {
-    maximumFractionDigits: 2
-  });
+  const fmtNum = value =>
+    Number(value || 0).toLocaleString("th-TH", {
+      maximumFractionDigits: 2
+    });
+
+  const fmtMoney = value =>
+    Number(value || 0).toLocaleString("th-TH", {
+      maximumFractionDigits: 2
+    });
 
   function parseCSV(text) {
-    const rows = [];
-    let row = [], cell = "", quoted = false;
+    const result = [];
+    let row = [];
+    let cell = "";
+    let quoted = false;
 
     for (let i = 0; i < text.length; i++) {
       const ch = text[i];
@@ -336,7 +440,7 @@
       } else if ((ch === "\n" || ch === "\r") && !quoted) {
         if (ch === "\r" && text[i + 1] === "\n") i++;
         row.push(cell);
-        if (row.some(v => v.trim() !== "")) rows.push(row);
+        if (row.some(v => v.trim() !== "")) result.push(row);
         row = [];
         cell = "";
       } else {
@@ -346,79 +450,119 @@
 
     if (cell.length || row.length) {
       row.push(cell);
-      rows.push(row);
+      if (row.some(v => v.trim() !== "")) result.push(row);
     }
 
-    return rows;
+    return result;
   }
 
-  function cleanHeader(s) {
-    return String(s || "")
+  function cleanHeader(value) {
+    return String(value || "")
       .replace(/^\uFEFF/, "")
-      .replace(/^"|"$/g, "")
-      .trim();
+      .trim()
+      .replace(/^"|"$/g, "");
   }
 
   function getField(obj, names) {
     for (const name of names) {
-      if (obj[name] !== undefined && obj[name] !== null) return obj[name];
+      if (Object.prototype.hasOwnProperty.call(obj, name)) {
+        return obj[name];
+      }
     }
     return "";
   }
 
-  function parseNum(value) {
+  function parseNumber(value) {
     if (value === null || value === undefined) return 0;
-    const cleaned = String(value).replace(/,/g, "").replace(/[฿\s]/g, "").trim();
+
+    const cleaned = String(value)
+      .replace(/,/g, "")
+      .replace(/[฿\s]/g, "")
+      .trim();
+
     if (!cleaned || cleaned === "-") return 0;
+
     const n = Number(cleaned);
     return Number.isFinite(n) ? n : 0;
   }
 
   function parseDate(value) {
     if (!value) return null;
-    const s = String(value).trim();
 
-    // รองรับ yyyy-mm-dd
-    let m = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+    const s = String(value).trim();
+    let m;
+
+    // yyyy-mm-dd หรือ yyyy/mm/dd
+    m = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
     if (m) {
-      let y = Number(m[1]), month = Number(m[2]), day = Number(m[3]);
-      if (y > 2400) y -= 543;
-      const d = new Date(y, month - 1, day);
-      return isNaN(d) ? null : d;
+      let year = Number(m[1]);
+      const month = Number(m[2]);
+      const day = Number(m[3]);
+
+      if (year > 2400) year -= 543;
+      return validDate(year, month, day);
     }
 
-    // รองรับ dd/mm/yyyy และ พ.ศ.
+    // dd/mm/yyyy หรือ dd-mm-yyyy
     m = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/);
     if (m) {
-      const day = Number(m[1]), month = Number(m[2]);
+      const day = Number(m[1]);
+      const month = Number(m[2]);
       let year = Number(m[3]);
+
       if (year > 2400) year -= 543;
-      const d = new Date(year, month - 1, day);
-      return isNaN(d) ? null : d;
+      return validDate(year, month, day);
     }
 
     const d = new Date(s);
-    return isNaN(d) ? null : d;
+    return isNaN(d.getTime()) ? null : d;
   }
 
-  function monthLabel(date) {
-    return date.toLocaleDateString("th-TH", { month: "short", year: "numeric" });
+  function validDate(year, month, day) {
+    const d = new Date(year, month - 1, day);
+
+    if (
+      d.getFullYear() !== year ||
+      d.getMonth() !== month - 1 ||
+      d.getDate() !== day
+    ) return null;
+
+    return d;
+  }
+
+  function displayDate(row) {
+    if (!row.date) return row.dateRaw || "";
+    return row.date.toLocaleDateString("th-TH");
   }
 
   function normalizeRow(raw) {
     const dateRaw = getField(raw, ["ว/ด/ป", "วันที่", "วัน/เดือน/ปี", "Date"]);
-    const start = parseNum(getField(raw, ["เลขไมล์เริ่ม"]));
-    const end = parseNum(getField(raw, ["เลขไมล์สิ้นสุด"]));
+    const start = parseNumber(getField(raw, ["เลขไมล์เริ่ม"]));
+    const end = parseNumber(getField(raw, ["เลขไมล์สิ้นสุด"]));
 
-    const explicitDistance = getField(raw, ["ระยะทางรวม"]);
-    let distance = parseNum(explicitDistance);
-    if (!String(explicitDistance).trim() && end >= start && start > 0) {
+    const distanceRaw = getField(raw, ["ระยะทางรวม"]);
+    let distance = parseNumber(distanceRaw);
+
+    // หากไม่มีระยะทางรวม ให้คำนวณจากเลขไมล์สิ้นสุด - เลขไมล์เริ่ม
+    if (
+      String(distanceRaw).trim() === "" &&
+      start > 0 &&
+      end >= start
+    ) {
       distance = end - start;
     }
 
-    const toll = parseNum(getField(raw, ["ค่าทางด่วน (บาท)", "ค่าทางด่วน"]));
-    const hotel = parseNum(getField(raw, ["ค่าห้องพัก (บาท)", "ค่าห้องพัก"]));
-    const travel = parseNum(getField(raw, ["ค่าเดินทาง (บาท)", "ค่าเดินทาง"]));
+    const toll = parseNumber(
+      getField(raw, ["ค่าทางด่วน (บาท)", "ค่าทางด่วน"])
+    );
+
+    const hotel = parseNumber(
+      getField(raw, ["ค่าห้องพัก (บาท)", "ค่าห้องพัก"])
+    );
+
+    const travel = parseNumber(
+      getField(raw, ["ค่าเดินทาง (บาท)", "ค่าเดินทาง"])
+    );
 
     return {
       date: parseDate(dateRaw),
@@ -429,8 +573,8 @@
       driver: getField(raw, ["ชื่อพขร. (หลัก)"]),
       helper: getField(raw, ["ชื่อพขร. (เสริม)"]),
       destination: getField(raw, ["ปลายทาง"]),
-      branch: getField(raw, ["สาขา"]) || "ไม่ระบุสาขา",
-      vehicleType: getField(raw, ["master ประเภทรถ"]),
+      branch: String(getField(raw, ["สาข"]) || "ไม่ระบุสาข").trim(),
+      vehicleType: String(getField(raw, ["master ประเภทรถ"]) || "ไม่ระบุ").trim(),
       distance,
       toll,
       hotel,
@@ -444,89 +588,123 @@
 
     if (!SHEET_CSV_URL.startsWith("http")) {
       status.className = "status error";
-      status.textContent = "กรุณาใส่ URL CSV จาก Google Sheets ในตัวแปร SHEET_CSV_URL ก่อน";
+      status.textContent =
+        "กรุณาใส่ URL CSV จาก Google Sheets ในตัวแปร SHEET_CSV_URL";
       return;
     }
 
     try {
       const response = await fetch(SHEET_CSV_URL);
-      if (!response.ok) throw new Error("HTTP " + response.status);
+
+      if (!response.ok) {
+        throw new Error("ไม่สามารถเปิด CSV ได้ (HTTP " + response.status + ")");
+      }
 
       const csvText = await response.text();
       const matrix = parseCSV(csvText);
 
-      if (matrix.length < 2) throw new Error("ไม่พบข้อมูลในชีต");
+      if (matrix.length < 2) {
+        throw new Error("ไม่พบข้อมูลในชีต");
+      }
 
       const headers = matrix[0].map(cleanHeader);
+
       const rawRows = matrix.slice(1).map(cells => {
         const obj = {};
-        headers.forEach((h, i) => obj[h] = cells[i] ?? "");
+        headers.forEach((header, i) => {
+          obj[header] = cells[i] ?? "";
+        });
         return obj;
       });
 
-      allRows = rawRows.map(normalizeRow)
+      allRows = rawRows
+        .map(normalizeRow)
         .filter(r => r.date || r.plate || r.lts || r.driver);
 
-      if (!allRows.length) throw new Error("ไม่พบรายการที่มีข้อมูล");
+      if (!allRows.length) {
+        throw new Error("ไม่พบรายการเดินรถ กรุณาตรวจสอบหัวคอลัมน์");
+      }
 
       setupFilters();
       renderDashboard();
 
       status.className = "status";
-      status.textContent = "โหลดข้อมูลสำเร็จ " + number(allRows.length) + " รายการ";
-    } catch (err) {
-      console.error(err);
+      status.textContent = "โหลดข้อมูลสำเร็จ " + fmtNum(allRows.length) + " รายการ";
+    } catch (error) {
+      console.error(error);
       status.className = "status error";
       status.textContent =
-        "โหลดข้อมูลไม่สำเร็จ กรุณาตรวจสอบ URL CSV และการเผยแพร่ Google Sheets (" +
-        err.message + ")";
+        "โหลดข้อมูลไม่สำเร็จ: " + error.message +
+        " กรุณาตรวจสอบ URL CSV และการเผยแพร่ Google Sheets";
     }
   }
 
   function setupFilters() {
-    const years = [...new Set(allRows.filter(r => r.date).map(r => r.date.getFullYear()))]
-      .sort((a, b) => b - a);
-
+    const branchSelect = document.getElementById("branchFilter");
     const yearSelect = document.getElementById("yearFilter");
+
+    const branches = [...new Set(
+      allRows.map(r => r.branch).filter(Boolean)
+    )].sort((a, b) => a.localeCompare(b, "th"));
+
+    branchSelect.innerHTML = "";
+
+    if (!branches.length) {
+      branchSelect.innerHTML = '<option value="">ไม่พบสาขา</option>';
+    } else {
+      branches.forEach(branch => {
+        const option = document.createElement("option");
+        option.value = branch;
+        option.textContent = branch;
+        branchSelect.appendChild(option);
+      });
+
+      // เริ่มต้นแสดงสาขาแรก เลือกสาขาอื่นได้จากเมนู
+      branchSelect.value = branches[0];
+    }
+
+    const years = [...new Set(
+      allRows.filter(r => r.date).map(r => r.date.getFullYear())
+    )].sort((a, b) => b - a);
+
     yearSelect.innerHTML = '<option value="all">ทุกปี</option>';
 
     years.forEach(year => {
-      const opt = document.createElement("option");
-      opt.value = year;
-      opt.textContent = year + 543 + " (พ.ศ.)";
-      yearSelect.appendChild(opt);
+      const option = document.createElement("option");
+      option.value = String(year);
+      option.textContent = (year + 543) + " (พ.ศ.)";
+      yearSelect.appendChild(option);
     });
 
-    const branches = [...new Set(allRows.map(r => r.branch).filter(Boolean))].sort();
-    const branchSelect = document.getElementById("branchFilter");
-    branchSelect.innerHTML = '<option value="all">ทุกสาขา</option>';
-
-    branches.forEach(branch => {
-      const opt = document.createElement("option");
-      opt.value = branch;
-      opt.textContent = branch;
-      branchSelect.appendChild(opt);
-    });
-
-    // เลือกปีล่าสุดให้อัตโนมัติ
-    if (years.length) yearSelect.value = String(years[0]);
+    if (years.length) {
+      yearSelect.value = String(years[0]);
+    }
   }
 
   function filteredRows() {
+    const branch = document.getElementById("branchFilter").value;
     const year = document.getElementById("yearFilter").value;
     const month = document.getElementById("monthFilter").value;
-    const branch = document.getElementById("branchFilter").value;
 
-    return allRows.filter(r => {
-      if (year !== "all" && (!r.date || r.date.getFullYear() !== Number(year))) return false;
-      if (month !== "all" && (!r.date || r.date.getMonth() + 1 !== Number(month))) return false;
-      if (branch !== "all" && r.branch !== branch) return false;
+    return allRows.filter(row => {
+      if (branch && row.branch !== branch) return false;
+
+      if (
+        year !== "all" &&
+        (!row.date || row.date.getFullYear() !== Number(year))
+      ) return false;
+
+      if (
+        month !== "all" &&
+        (!row.date || row.date.getMonth() + 1 !== Number(month))
+      ) return false;
+
       return true;
     });
   }
 
   function sum(rows, key) {
-    return rows.reduce((total, r) => total + (Number(r[key]) || 0), 0);
+    return rows.reduce((total, row) => total + (Number(row[key]) || 0), 0);
   }
 
   function setText(id, value) {
@@ -535,6 +713,10 @@
 
   function renderDashboard() {
     const rows = filteredRows();
+    const branch = document.getElementById("branchFilter").value;
+    const year = document.getElementById("yearFilter").value;
+    const month = document.getElementById("monthFilter").value;
+
     const trips = rows.length;
     const distance = sum(rows, "distance");
     const toll = sum(rows, "toll");
@@ -542,33 +724,52 @@
     const travel = sum(rows, "travel");
     const cost = toll + hotel + travel;
 
-    setText("kpiTrips", number(trips));
-    setText("kpiDistance", number(distance));
-    setText("kpiCost", money(cost) + " ฿");
-    setText("kpiAvg", money(trips ? cost / trips : 0) + " ฿");
-    setText("kpiToll", money(toll) + " ฿");
-    setText("kpiHotel", money(hotel) + " ฿");
-    setText("kpiTravel", money(travel) + " ฿");
-    setText("kpiAvgDistance", number(trips ? distance / trips : 0));
+    setText("selectedBranch", branch || "ไม่พบสาขา");
+    setText(
+      "reportPeriod",
+      "ช่วงเวลา: " +
+      (month === "all" ? "ทุกเดือน" : MONTHS[Number(month) - 1]) +
+      " · " +
+      (year === "all" ? "ทุกปี" : Number(year) + 543 + " (พ.ศ.)") +
+      " · จำนวน " + fmtNum(trips) + " เที่ยว"
+    );
+
+    setText("kpiTrips", fmtNum(trips));
+    setText("kpiDistance", fmtNum(distance));
+    setText("kpiCost", fmtMoney(cost) + " ฿");
+    setText("kpiAvgCost", fmtMoney(trips ? cost / trips : 0) + " ฿");
+    setText("kpiToll", fmtMoney(toll) + " ฿");
+    setText("kpiHotel", fmtMoney(hotel) + " ฿");
+    setText("kpiTravel", fmtMoney(travel) + " ฿");
+    setText("kpiAvgDistance", fmtNum(trips ? distance / trips : 0));
 
     renderCharts(rows);
     renderTable(rows);
   }
 
-  function createChart(id, config) {
+  function makeChart(id, config) {
     if (charts[id]) charts[id].destroy();
-    charts[id] = new Chart(document.getElementById(id), config);
+
+    charts[id] = new Chart(
+      document.getElementById(id).getContext("2d"),
+      config
+    );
   }
 
   function renderCharts(rows) {
     const monthly = {};
 
-    rows.forEach(r => {
-      if (!r.date) return;
-      const key = r.date.getFullYear() + "-" + String(r.date.getMonth() + 1).padStart(2, "0");
+    rows.forEach(row => {
+      if (!row.date) return;
+
+      const key =
+        row.date.getFullYear() + "-" +
+        String(row.date.getMonth() + 1).padStart(2, "0");
+
       if (!monthly[key]) {
         monthly[key] = {
-          label: monthLabel(r.date),
+          label: MONTHS[row.date.getMonth()] + " " +
+            (row.date.getFullYear() + 543),
           trips: 0,
           distance: 0,
           toll: 0,
@@ -576,30 +777,31 @@
           travel: 0
         };
       }
-      monthly[key].trips++;
-      monthly[key].distance += r.distance;
-      monthly[key].toll += r.toll;
-      monthly[key].hotel += r.hotel;
-      monthly[key].travel += r.travel;
+
+      monthly[key].trips += 1;
+      monthly[key].distance += row.distance;
+      monthly[key].toll += row.toll;
+      monthly[key].hotel += row.hotel;
+      monthly[key].travel += row.travel;
     });
 
-    const months = Object.keys(monthly).sort();
+    const keys = Object.keys(monthly).sort();
 
-    createChart("trendChart", {
+    makeChart("trendChart", {
       data: {
-        labels: months.map(k => monthly[k].label),
+        labels: keys.map(key => monthly[key].label),
         datasets: [
           {
             type: "bar",
             label: "จำนวนเที่ยว",
-            data: months.map(k => monthly[k].trips),
+            data: keys.map(key => monthly[key].trips),
             backgroundColor: "#3b82f6",
             yAxisID: "y"
           },
           {
             type: "line",
             label: "ระยะทาง (กม.)",
-            data: months.map(k => monthly[k].distance),
+            data: keys.map(key => monthly[key].distance),
             borderColor: "#f59e0b",
             backgroundColor: "#f59e0b",
             tension: 0.3,
@@ -612,65 +814,92 @@
         maintainAspectRatio: false,
         interaction: { mode: "index", intersect: false },
         scales: {
-          y: { beginAtZero: true, title: { display: true, text: "จำนวนเที่ยว" } },
+          y: {
+            beginAtZero: true,
+            title: { display: true, text: "จำนวนเที่ยว" }
+          },
           y1: {
             beginAtZero: true,
             position: "right",
-            title: { display: true, text: "กิโลเมตร" },
+            title: { display: true, text: "ระยะทาง (กม.)" },
             grid: { drawOnChartArea: false }
           }
         }
       }
     });
 
-    createChart("costChart", {
+    makeChart("costChart", {
       type: "bar",
       data: {
-        labels: months.map(k => monthly[k].label),
+        labels: keys.map(key => monthly[key].label),
         datasets: [
-          { label: "ค่าทางด่วน", data: months.map(k => monthly[k].toll), backgroundColor: "#2563eb" },
-          { label: "ค่าห้องพัก", data: months.map(k => monthly[k].hotel), backgroundColor: "#10b981" },
-          { label: "ค่าเดินทาง", data: months.map(k => monthly[k].travel), backgroundColor: "#f59e0b" }
+          {
+            label: "ค่าทางด่วน",
+            data: keys.map(key => monthly[key].toll),
+            backgroundColor: "#3b82f6"
+          },
+          {
+            label: "ค่าห้องพัก",
+            data: keys.map(key => monthly[key].hotel),
+            backgroundColor: "#10b981"
+          },
+          {
+            label: "ค่าเดินทาง",
+            data: keys.map(key => monthly[key].travel),
+            backgroundColor: "#f59e0b"
+          }
         ]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } }
+        scales: {
+          x: { stacked: true },
+          y: { stacked: true, beginAtZero: true }
+        }
       }
     });
 
-    createChart("costShareChart", {
+    makeChart("shareChart", {
       type: "doughnut",
       data: {
         labels: ["ค่าทางด่วน", "ค่าห้องพัก", "ค่าเดินทาง"],
         datasets: [{
-          data: [sum(rows, "toll"), sum(rows, "hotel"), sum(rows, "travel")],
-          backgroundColor: ["#2563eb", "#10b981", "#f59e0b"],
+          data: [
+            sum(rows, "toll"),
+            sum(rows, "hotel"),
+            sum(rows, "travel")
+          ],
+          backgroundColor: ["#3b82f6", "#10b981", "#f59e0b"],
           borderWidth: 0
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { position: "bottom" } }
+        plugins: {
+          legend: { position: "bottom" }
+        }
       }
     });
 
-    const branchTotals = {};
-    rows.forEach(r => {
-      branchTotals[r.branch] = (branchTotals[r.branch] || 0) + r.distance;
+    const vehicles = {};
+
+    rows.forEach(row => {
+      const type = row.vehicleType || "ไม่ระบุ";
+      vehicles[type] = (vehicles[type] || 0) + row.distance;
     });
 
-    const branchEntries = Object.entries(branchTotals).sort((a, b) => b[1] - a[1]);
+    const vehicleEntries = Object.entries(vehicles)
+      .sort((a, b) => b[1] - a[1]);
 
-    createChart("branchChart", {
+    makeChart("vehicleChart", {
       type: "bar",
       data: {
-        labels: branchEntries.map(e => e[0]),
+        labels: vehicleEntries.map(entry => entry[0]),
         datasets: [{
           label: "ระยะทางรวม (กม.)",
-          data: branchEntries.map(e => e[1]),
+          data: vehicleEntries.map(entry => entry[1]),
           backgroundColor: "#6366f1",
           borderRadius: 5
         }]
@@ -686,35 +915,44 @@
   }
 
   function renderTable(rows) {
-    const query = document.getElementById("searchInput").value.trim().toLowerCase();
+    const query = document.getElementById("searchInput")
+      .value.trim().toLowerCase();
 
-    const visible = rows.filter(r => {
-      const text = [
-        r.dateRaw, r.branch, r.lts, r.plate, r.trailer,
-        r.driver, r.helper, r.destination, r.vehicleType
+    const visibleRows = rows.filter(row => {
+      const searchable = [
+        row.dateRaw, row.branch, row.lts, row.plate, row.trailer,
+        row.driver, row.helper, row.destination, row.vehicleType
       ].join(" ").toLowerCase();
 
-      return text.includes(query);
+      return searchable.includes(query);
     });
 
     const tbody = document.getElementById("dataTable");
     tbody.innerHTML = "";
 
-    if (!visible.length) {
-      tbody.innerHTML = '<tr><td colspan="13">ไม่พบข้อมูลตามเงื่อนไข</td></tr>';
+    if (!visibleRows.length) {
+      tbody.innerHTML =
+        '<tr><td colspan="13" class="empty">ไม่พบข้อมูลตามเงื่อนไขที่เลือก</td></tr>';
     } else {
       const fragment = document.createDocumentFragment();
 
-      visible.forEach(r => {
+      visibleRows.forEach(row => {
         const tr = document.createElement("tr");
-        const dateText = r.date
-          ? r.date.toLocaleDateString("th-TH")
-          : r.dateRaw;
 
         const values = [
-          dateText, r.branch, r.lts, r.plate, r.trailer,
-          r.driver, r.helper, r.destination, number(r.distance),
-          money(r.toll), money(r.hotel), money(r.travel), money(r.totalCost)
+          displayDate(row),
+          row.lts,
+          row.plate,
+          row.trailer,
+          row.driver,
+          row.helper,
+          row.destination,
+          row.vehicleType,
+          fmtNum(row.distance),
+          fmtMoney(row.toll),
+          fmtMoney(row.hotel),
+          fmtMoney(row.travel),
+          fmtMoney(row.totalCost)
         ];
 
         values.forEach(value => {
@@ -729,24 +967,36 @@
       tbody.appendChild(fragment);
     }
 
-    setText("tableCount", "แสดง " + number(visible.length) + " จาก " + number(rows.length) + " รายการ");
+    setText(
+      "tableCount",
+      "แสดง " + fmtNum(visibleRows.length) +
+      " จาก " + fmtNum(rows.length) + " รายการของสาขาที่เลือก"
+    );
   }
 
-  ["yearFilter", "monthFilter", "branchFilter"].forEach(id => {
-    document.getElementById(id).addEventListener("change", renderDashboard);
-  });
+  document.getElementById("branchFilter")
+    .addEventListener("change", renderDashboard);
 
-  document.getElementById("searchInput").addEventListener("input", () => {
-    renderTable(filteredRows());
-  });
+  document.getElementById("yearFilter")
+    .addEventListener("change", renderDashboard);
 
-  document.getElementById("resetBtn").addEventListener("click", () => {
-    document.getElementById("yearFilter").value = "all";
-    document.getElementById("monthFilter").value = "all";
-    document.getElementById("branchFilter").value = "all";
-    document.getElementById("searchInput").value = "";
-    renderDashboard();
-  });
+  document.getElementById("monthFilter")
+    .addEventListener("change", renderDashboard);
+
+  document.getElementById("searchInput")
+    .addEventListener("input", () => renderTable(filteredRows()));
+
+  document.getElementById("resetBtn")
+    .addEventListener("click", () => {
+      const branchSelect = document.getElementById("branchFilter");
+
+      // ล้างปีและเดือน แต่คงสาขาที่กำลังดูไว้
+      document.getElementById("yearFilter").value = "all";
+      document.getElementById("monthFilter").value = "all";
+      document.getElementById("searchInput").value = "";
+
+      renderDashboard();
+    });
 
   loadData();
 </script>

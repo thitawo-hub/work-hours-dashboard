@@ -57,6 +57,7 @@ th:first-child,td:first-child,td.l,th.l{text-align:left}
 <div class="box"><h2>จำนวนรถต่อวัน (LOCO) เทียบ Target</h2><svg id="cLocoCar" style="width:100%;height:220px"></svg></div>
 <div class="box"><h2>จำนวนคนต่อวัน (LOCO) เทียบ Target</h2><svg id="cLocoPer" style="width:100%;height:220px"></svg></div>
 </div>
+<div class="box"><h2>รถช่วยวิ่งงาน (แยกออก ไม่นับรวมในตัวเลขด้านบน)</h2><div class="wrap"><table id="tHelp"></table></div></div>
 </div>
 <script>
 "use strict";
@@ -83,20 +84,23 @@ if(m){let y=+m[3];if(y<100)y+=2000;if(y>2400)y-=543;return new Date(y,m[2]-1,m[1
 const dk=d=>d?`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`:"";
 const nm=v=>tx(v).replace(/^(นางสาว|น\.ส\.|นาย|นาง)\s*/,"").replace(/\s+/g," "),pl=v=>tx(v).replace(/\s+/g,"").toUpperCase();
 function norm(r){const d=pdate(r["ว/ด/ป"]);const type=tx(r["ประเภทรถ"]);
-const o={date:d,k:dk(d),head:pl(r["ทะเบียนหัว"]),tail:pl(r["เบอร์หาง"]),plate:pl(r["ทะเบียนหัว"]),driver:nm(r["ชื่อพขร. (หลัก)"]),driver2:nm(r["ชื่อพขร. (เสริม)"]),
+const o={date:d,k:dk(d),help:/ช่วย/.test(tx(r["สาขา"])),head:pl(r["ทะเบียนหัว"]),tail:pl(r["เบอร์หาง"]),plate:pl(r["ทะเบียนหัว"]),driver:nm(r["ชื่อพขร. (หลัก)"]),driver2:nm(r["ชื่อพขร. (เสริม)"]),
 branch:tx(r["สาขา"])||"ไม่ระบุ",group:type?"COCO":"LOCO",km:num(r["ระยะทางรวม"])};o.car=o.group==="LOCO"?(o.head?"":o.tail):o.head;return o}
 function normT(r){return{type:tx(r["ประเภท"]),item:tx(r["รายการ"]),group:tx(r["กลุ่มงาน"]),branch:tx(r["สาขา"]),val:num(r["ค่า Target"]),start:pdate(r["เริ่มใช้วันที่"]),end:pdate(r["สิ้นสุดวันที่"])}}
 // Target: CAR รวมสัญญาย่อยของสาขา (ระยองสัญญา 1, 2, 10W) / อื่นๆ ใช้ชื่อสาขาตรงตัว
 function tgt(type,group,branch){const L=targets.filter(t=>t.type===type&&t.group===group);
 if(branch){if(type==="CAR")return L.filter(t=>t.branch.startsWith(branch)).reduce((a,t)=>a+t.val,0)||null;
 const t=L.find(t=>t.branch===branch);return t?t.val:null}
-const bs=[...new Set(rows.map(r=>r.branch))];let s=0,ok=false;bs.forEach(b=>{const v=tgt(type,group,b);if(v!=null){s+=v;ok=true}});return ok?s:null}
+const bs=[...new Set(rows.filter(r=>!r.help).map(r=>r.branch))];let s=0,ok=false;bs.forEach(b=>{const v=tgt(type,group,b);if(v!=null){s+=v;ok=true}});return ok?s:null}
 function sel(){const f=$("from").value,t=$("to").value,b=$("branch").value;
-return rows.filter(r=>r.k&&(!f||r.k>=f)&&(!t||r.k<=t)&&(!b||r.branch===b))}
+return rows.filter(r=>r.k&&!r.help&&(!f||r.k>=f)&&(!t||r.k<=t)&&(!b||r.branch===b))}
 function cycleOf(d){const st=d.getDate()>=26?new Date(d.getFullYear(),d.getMonth(),26):new Date(d.getFullYear(),d.getMonth()-1,26);return[st,new Date(st.getFullYear(),st.getMonth()+1,25)]}
 const dm=d=>d.toLocaleDateString("th-TH",{day:"numeric",month:"short"});
 const uniq=a=>new Set(a.filter(Boolean)).size;
-function render(){const R=sel(),b=$("branch").value;
+function helperBox(){const f=$("from").value,t=$("to").value,H=rows.filter(r=>r.help&&r.k&&(!f||r.k>=f)&&(!t||r.k<=t)),m=new Map();
+H.forEach(r=>{const o=m.get(r.branch)||{trips:0,km:0,c:new Set(),d:new Set()};o.trips++;o.km+=r.km;const c=r.head||r.tail;if(c)o.c.add(c);[r.driver,r.driver2].forEach(x=>x&&o.d.add(x));m.set(r.branch,o)});
+$("tHelp").innerHTML='<tr><th class="l">สาขา (ช่วยวิ่งงาน)</th><th>เที่ยว</th><th>ระยะทาง</th><th>รถ</th><th>คน</th></tr>'+([...m].map(([k,o])=>`<tr><td class="l">${esc(k)}</td><td>${o.trips}</td><td>${fmt(o.km)}</td><td>${o.c.size}</td><td>${o.d.size}</td></tr>`).join("")||'<tr><td class="l" colspan="5">ไม่มีรายการในช่วงที่เลือก</td></tr>')}
+function render(){helperBox();const R=sel(),b=$("branch").value;
 const f=$("from").value,t=$("to").value;if(!R.length){$("status").textContent="ไม่พบข้อมูลในช่วงที่เลือก";return}
 const ds=R.map(r=>r.k).sort(),first=pdate(f||ds[0]),last=pdate(ds[ds.length-1]);
 const days=Math.max(1,Math.round((last-first)/864e5)+1),cyc=cycleOf(last),dim=Math.round((cyc[1]-cyc[0])/864e5)+1;
@@ -154,7 +158,7 @@ MC=mc.map(r=>({branch:tx(r["สาขา"]),plate:pl(r["ทะเบียน"])
 MD=md.map(r=>({branch:tx(r["สาขา"]),name:nm(r["ชื่อ พขร."]),pos:tx(r["ตำแหน่ง"]),leave:pdate(r["วันที่ลาออก"])})).filter(x=>x.name);
 const all=d.map(norm);bad=all.filter(r=>r.km<0||r.km>MAX_TRIP_KM).length;rows=all.filter(r=>r.km>=0&&r.km<=MAX_TRIP_KM);
 targets=t.map(normT);
-const sb=$("branch"),pv=sb.value;sb.innerHTML='<option value="">ทุกสาขา</option>'+[...new Set(rows.map(r=>r.branch))].sort().map(x=>`<option>${esc(x)}</option>`).join("");sb.value=pv;
+const sb=$("branch"),pv=sb.value;sb.innerHTML='<option value="">ทุกสาขา</option>'+[...new Set(rows.filter(r=>!r.help).map(r=>r.branch))].sort().map(x=>`<option>${esc(x)}</option>`).join("");sb.value=pv;
 const cs=new Map();rows.forEach(r=>{if(r.date){const c=cycleOf(r.date);cs.set(dk(c[0]),c)}});
 const cl=[...cs].sort((a,b)=>a[0]<b[0]?1:-1),cy=$("cycle");
 cy.innerHTML=cl.map(([k,c])=>`<option value="${k}|${dk(c[1])}">รอบ ${dm(c[0])} – ${dm(c[1])} ${c[1].getFullYear()+543}</option>`).join("");

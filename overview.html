@@ -121,7 +121,7 @@ if(tline){const y=H-pb-tline/mx*(H-pb-14);s+=`<line x1="${pl}" x2="${W}" y1="${y
 s+=`<text x="4" y="14" font-size="10">${fmt(mx)}</text>`;$("chart").setAttribute("viewBox",`0 0 ${W} ${H}`);$("chart").innerHTML=s}
 function cmp(a,t,d=0){if(t==null)return'<td>No data</td><td>-</td>';
 const ok=a>=t;return`<td>${fmt(t,d)}</td><td class="${ok?"good":"bad"}">${fmt(a-t,d)}</td>`}
-function dailyBars(id,R,g,pick,tline){const m=new Map();R.filter(r=>r.group===g).forEach(r=>{const a=m.get(r.k)||new Set();pick(r).forEach(x=>x&&a.add(x));m.set(r.k,a)});
+function dailyBars(id,R,g,pick,tline){const m=new Map();R.filter(r=>r.group===g&&(g!=="LOCO"||!r.head)).forEach(r=>{const a=m.get(r.k)||new Set();pick(r).forEach(x=>x&&a.add(x));m.set(r.k,a)});
 const e=[...m].map(([k,a])=>[k,a.size]).sort((a,b)=>a[0]<b[0]?-1:1),W=500,H=220,pb=24,mx=Math.max(1,tline||0,...e.map(x=>x[1])),bw=W/Math.max(1,e.length);
 let s="";e.forEach(([k,v],i)=>{const h=v/mx*(H-pb-18),x=i*bw+bw*.15;
 s+=`<rect x="${x}" y="${H-pb-h}" width="${bw*.7}" height="${h}" fill="#166534"/><text x="${x+bw*.35}" y="${H-pb-h-3}" font-size="10" text-anchor="middle">${v}</text>`;
@@ -130,18 +130,22 @@ if(tline){const y=H-pb-tline/mx*(H-pb-18);s+=`<line x1="0" x2="${W}" y1="${y}" y
 if(!e.length)s='<text x="10" y="30" font-size="12">ไม่มีข้อมูล LOCO ในช่วงนี้</text>';
 $(id).setAttribute("viewBox",`0 0 ${W} ${H}`);$(id).innerHTML=s}
 const mCars=b=>uniq(MC.filter(x=>!b||x.branch===b).map(x=>x.plate));
-const mDrv=b=>{const to=$("to").value;return uniq(MD.filter(x=>(!b||x.branch===b)&&!(x.leave&&to&&dk(x.leave)<=to)).map(x=>x.name))};
+const mDrv=(b,pos)=>{const to=$("to").value;return uniq(MD.filter(x=>(!b||x.branch===b)&&(!pos||(pos==="OIL"?/OIL/i.test(x.pos):x.pos.replace(/\s/g,"").toUpperCase()===pos))&&!(x.leave&&to&&dk(x.leave)<=to)).map(x=>x.name))};
 function crew(R,b){let h='<tr><th class="l">รายการ</th><th>จริง</th><th>Target</th><th>Diff</th></tr>';
-["COCO","LOCO"].forEach(g=>{const G=R.filter(r=>r.group===g);let c=uniq(G.map(r=>r.car)),p=uniq(G.flatMap(r=>[r.driver,r.driver2]));if(g==="COCO"){if(MC.length)c=mCars(b);if(MD.length)p=mDrv(b)}const tp=tgt("PERSON",g,b),tc=tgt("CAR",g,b);
-h+=`<tr><td class="l">พขร. ${g}</td><td>${fmt(p)} คน</td>${cmp(p,tp)}</tr>`;
-h+=`<tr><td class="l">จำนวนรถ ${g}</td><td>${fmt(c)} คัน</td>${cmp(c,tc)}</tr>`;
-const ra=c?p/c:0,tr=tp!=null&&tc?tp/tc:null;
-h+=`<tr><td class="l">Driver Ratio ${g}</td><td>${c?fmt(ra,3):"No data"}</td>${tr==null?"<td>No data</td><td>-</td>":`<td>${fmt(tr,3)}</td><td class="${ra>=tr?"good":"bad"}">${fmt(ra-tr,3)}</td>`}</tr>`;
-if(g==="COCO"&&tr!=null&&c)h+=`<tr><td class="l">ต้องหา พขร. COCO เพิ่ม</td><td colspan="3" class="${p>=tr*c?"good":"bad"}">${fmt(Math.max(0,Math.ceil(tr*c-p)))} คน</td></tr>`});
-$("tCrew").innerHTML=h;$("crewNote").textContent=(MC.length&&MD.length?"COCO: นับจาก Master driver (ไม่รวมคนที่ลาออกแล้ว) และ Master car · ":"COCO: ยังนับจากข้อมูลวิ่งงาน (ยังไม่ได้ตั้งค่า Master) · ")+"LOCO: นับจากข้อมูลวิ่งงาน (ไม่ซ้ำ)";
+const sec=t=>`<tr><td colspan="4" style="background:#f0f6f2;font-weight:700;color:var(--g8);text-align:left">${t}</td></tr>`;
+const act=(g,pos)=>{const G=R.filter(r=>r.group===g&&(g!=="LOCO"||!r.head));let c=uniq(G.map(r=>r.car)),p=uniq(G.flatMap(r=>[r.driver,r.driver2]));if(g==="COCO"&&MC.length)c=mCars(b);if(MD.length)p=mDrv(b,pos);return[c,p]};
+const grp=(g,pos)=>{const[c,p]=act(g,pos),tp=tgt("PERSON",g,b),tc=tgt("CAR",g,b),ra=c?p/c:0,tr=tp!=null&&tc?tp/tc:null;
+h+=`<tr><td class="l">พขร. ${g} (${pos})</td><td>${fmt(p)} คน</td>${cmp(p,tp)}</tr><tr><td class="l">จำนวนรถ ${g}</td><td>${fmt(c)} คัน</td>${cmp(c,tc)}</tr>`;
+h+=`<tr><td class="l">Driver Ratio ${g}</td><td>${c?fmt(ra,3):"No data"}</td>${tr==null?"<td>No data</td><td>-</td>":`<td>${fmt(tr,3)}</td><td class="${ra>=tr?"good":"bad"}">${fmt(ra-tr,3)}</td>`}</tr>`;return{p,tp}};
+h+=sec("COCO · พขร. ตำแหน่ง 22W");const co=grp("COCO","22W");
+const po=MD.length?mDrv(b,"OIL"):null;
+if(co.tp!=null){const d=co.p-co.tp-(po||0);h+=`<tr><td class="l">ต้องหา พขร. COCO เพิ่ม<br><small style="color:var(--mut)">Actual − Target − Oil</small></td><td colspan="3" class="${d>=0?"good":"bad"}" style="font-size:15px">${d<0?"ต้องหาเพิ่ม "+fmt(-d)+" คน":"ไม่ต้องหาเพิ่ม (เกิน "+fmt(d)+" คน)"}<br><small style="color:var(--mut);font-weight:400">${fmt(co.p)} − ${fmt(co.tp)} − ${fmt(po||0)} = ${fmt(d)}</small></td></tr>`}
+h+=sec("Oil · พขร. ที่มาช่วยวิ่งงาน COCO")+`<tr><td class="l">พขร. Oil</td><td colspan="3">${po==null?"- (ต้องตั้งค่า Master driver)":fmt(po)+" คน"}</td></tr>`;
+h+=sec("LOCO · พขร. ตำแหน่ง 10W");grp("LOCO","10W");
+$("tCrew").innerHTML=h;$("crewNote").textContent=(MD.length?"พขร.: นับจาก Master driver ตามตำแหน่ง (22W=COCO, 10W=LOCO, Oil=ช่วยวิ่งงาน COCO) ไม่รวมคนที่ลาออก · ":"พขร.: ยังนับจากข้อมูลวิ่งงาน (ยังไม่ได้ตั้งค่า Master driver) · ")+(MC.length?"รถ COCO: Master car · ":"รถ COCO: ข้อมูลวิ่งงาน · ")+"รถ LOCO: ข้อมูลวิ่งงาน (เบอร์หางเมื่อทะเบียนหัวว่าง)";
 const L=R.filter(r=>r.group==="LOCO"),pm=new Map();L.forEach(r=>{if(r.car)pm.set(r.car,(pm.get(r.car)||0)+1)});
 const mp=new Set(MC.map(x=>x.plate)),ov=[...pm.keys()].filter(k=>mp.has(k)).length;
-$("locoList").innerHTML=`<p>เที่ยว LOCO ${L.length} · LOCO ที่มีทะเบียนหัว (ไม่นับเป็นรถ) ${L.filter(r=>r.head).length} เที่ยว · ไม่มีเบอร์หาง ${L.filter(r=>!r.head&&!r.tail).length} · ทะเบียนซ้ำกับ Master car ${MC.length?ov:"-"} คัน</p><p><b>รถ:</b> ${[...pm].sort((a,b)=>b[1]-a[1]).map(([k,v])=>esc(k)+" ("+v+")").join(", ")||"-"}</p><p><b>คน:</b> ${esc([...new Set(L.flatMap(r=>[r.driver,r.driver2]).filter(Boolean))].join(", "))||"-"}</p>`}
+$("locoList").innerHTML=`<p>เที่ยว LOCO ${L.length} · LOCO ที่มีทะเบียนหัว (ไม่นับเป็นรถ) ${L.filter(r=>r.head).length} เที่ยว · ไม่มีเบอร์หาง ${L.filter(r=>!r.head&&!r.tail).length} · ทะเบียนซ้ำกับ Master car ${MC.length?ov:"-"} คัน</p><p><b>รถ:</b> ${[...pm].sort((a,b)=>b[1]-a[1]).map(([k,v])=>esc(k)+" ("+v+")").join(", ")||"-"}</p><p><b>คน (นับเฉพาะเที่ยวที่ไม่มีทะเบียนหัว):</b> ${esc([...new Set(L.filter(r=>!r.head).flatMap(r=>[r.driver,r.driver2]).filter(Boolean))].join(", "))||"-"}</p>`}
 function carTable(R,days,dim,b){const m=new Map();R.forEach(r=>{if(!r.car)return;const o=m.get(r.car)||{p:r.car,b:r.branch,g:r.group,km:0,n:0};o.km+=r.km;o.n++;m.set(r.car,o)});
 const L=[...m.values()].map(o=>{const t=o.g==="COCO"?tgt("KM","COCO",o.b):null;return{...o,avg:o.km/days,pr:o.km/days*dim,t}}).sort((a,b)=>b.pr-a.pr);
 $("tCar").innerHTML='<tr><th class="l">ทะเบียน</th><th class="l">สาขา</th><th class="l">กลุ่ม</th><th>เที่ยว</th><th>ยอดสะสม</th><th>เฉลี่ย/วัน</th><th>เป้า/คัน</th><th>ประมาณการสิ้นเดือน</th><th>% ของเป้า</th></tr>'+

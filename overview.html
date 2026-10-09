@@ -4,1097 +4,808 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Executive Overview | Work Hours Dashboard</title>
-
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-
+<title>Work Hours & Fleet Overview</title>
 <style>
-:root{
-  --navy:#14243b;--navy2:#203854;--blue:#3267e3;
-  --cyan:#31b6c8;--green:#16876b;--orange:#d97732;
-  --red:#d95757;--ink:#172337;--muted:#748196;
-  --line:#e4eaf2;--bg:#f4f7fb;--card:#fff;
-  --shadow:0 8px 26px rgba(25,48,79,.055)
+:root {
+  --bg:#f3f6fb; --card:#fff; --text:#172033; --muted:#64748b;
+  --line:#e2e8f0; --blue:#2563eb; --green:#15803d;
+  --red:#b91c1c; --amber:#b45309;
 }
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font-family:'IBM Plex Sans Thai',Inter,sans-serif;font-size:14px}
-button,select{font:inherit}
-.app{max-width:1600px;margin:auto;padding:28px 32px 40px}
-.topbar{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:24px}
-.brand{display:flex;align-items:center;gap:13px}
-.brandmark{width:46px;height:46px;border-radius:14px;background:linear-gradient(145deg,#3267e3,#2449a7);display:grid;place-items:center;color:white;box-shadow:0 8px 18px #3267e333}
-.brandmark svg{width:25px;height:25px}
-.eyebrow{font:700 10px Inter,sans-serif;letter-spacing:1.5px;text-transform:uppercase;color:var(--blue)}
-h1{font-size:25px;line-height:1.25;margin:3px 0 0;font-weight:700;letter-spacing:-.4px}
-.subtitle{color:var(--muted);font-size:12px;margin-top:4px}
-.status{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:30px;padding:9px 13px;color:#5c6a7d;font-size:12px;white-space:nowrap}
-.dot{width:7px;height:7px;border-radius:50%;background:#22a879;box-shadow:0 0 0 4px #22a87918}
-.hero{background:linear-gradient(110deg,#14243b 0%,#203d60 65%,#27547a 100%);color:#fff;border-radius:20px;padding:25px 28px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;gap:24px;position:relative;overflow:hidden}
-.hero:after{content:'';position:absolute;width:330px;height:330px;border:1px solid #ffffff12;border-radius:50%;right:13%;top:-205px;box-shadow:0 0 0 35px #ffffff08,0 0 0 70px #ffffff05}
-.hero-copy,.hero-meta{position:relative;z-index:1}
-.hero h2{font-size:20px;margin:0 0 7px;font-weight:600}
-.hero p{color:#c5d4e5;margin:0;font-size:12px}
-.hero-meta{text-align:right}
-.period-label{font-size:10px;text-transform:uppercase;letter-spacing:1.4px;color:#b5c9df}
-.period-range{font-size:17px;font-weight:600;margin-top:5px}
-.filters{display:flex;align-items:end;gap:12px;flex-wrap:wrap;background:var(--card);padding:15px 18px;border:1px solid var(--line);border-radius:15px;margin-bottom:20px;box-shadow:var(--shadow)}
-.filter{display:flex;flex-direction:column;gap:6px;min-width:180px}
-.filter label{font-size:11px;color:var(--muted);font-weight:600}
-.filter select{height:39px;border:1px solid #dce4ee;border-radius:9px;padding:0 34px 0 12px;background:#fff;color:var(--ink);outline:none;min-width:180px}
-.filter select:focus{border-color:var(--blue);box-shadow:0 0 0 3px #3267e315}
-.filter-note{margin-left:auto;color:var(--muted);font-size:11px;padding-bottom:10px}
-.section-head{display:flex;align-items:end;justify-content:space-between;gap:12px;margin:25px 2px 12px}
-.section-head h2{font-size:16px;margin:0;font-weight:700}
-.section-head p{font-size:11px;color:var(--muted);margin:4px 0 0}
-.section-kicker{font:600 10px Inter,sans-serif;letter-spacing:1px;color:var(--muted);text-transform:uppercase}
-.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
-.kpi{background:var(--card);border:1px solid var(--line);border-radius:15px;padding:18px 19px;box-shadow:var(--shadow);min-width:0}
-.kpi-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
-.kpi-label{font-size:12px;color:#66758a;font-weight:500}
-.kpi-icon{width:33px;height:33px;border-radius:10px;display:grid;place-items:center;flex-shrink:0}
-.kpi-icon svg{width:17px;height:17px}
-.ib{background:#eaf0ff;color:#3267e3}
-.ig{background:#e3f6ef;color:#16876b}
-.io{background:#fff0e5;color:#d97732}
-.ic{background:#e3f7fa;color:#138b9b}
-.kpi-value{font:800 27px/1.25 Inter,'IBM Plex Sans Thai',sans-serif;letter-spacing:-.7px;margin:13px 0 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.kpi-unit{font-size:11px;color:var(--muted);font-weight:400;letter-spacing:0}
-.kpi-foot{font-size:11px;color:var(--muted)}
-.kpi-foot strong{color:#34445b;font-weight:600}
-.charts-grid{display:grid;grid-template-columns:1.45fr 1fr;gap:15px}
-.chart-card{background:#fff;border:1px solid var(--line);border-radius:15px;padding:19px 20px;box-shadow:var(--shadow);min-width:0}
-.chart-title-row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:16px}
-.chart-title{font-size:14px;font-weight:700;margin:0}
-.chart-desc{font-size:11px;color:var(--muted);margin-top:4px}
-.chart-tag{font-size:10px;color:#51647d;background:#f2f5f9;padding:5px 9px;border-radius:20px;white-space:nowrap}
-.chart-wrap{height:275px;position:relative}
-.chart-wrap.short{height:245px}
-.charts-grid.second{grid-template-columns:1fr 1fr;margin-top:15px}
-.chart-foot{display:flex;gap:16px;flex-wrap:wrap;border-top:1px solid #edf1f6;margin-top:13px;padding-top:12px;color:var(--muted);font-size:11px}
-.legend-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px}
-.table-card{background:#fff;border:1px solid var(--line);border-radius:15px;box-shadow:var(--shadow);overflow:hidden}
-.table-toolbar{padding:16px 19px;display:flex;justify-content:space-between;align-items:center;gap:12px;border-bottom:1px solid var(--line)}
-.table-toolbar h3{margin:0;font-size:14px}
-.table-toolbar p{margin:4px 0 0;color:var(--muted);font-size:11px}
-.table-count{font-size:11px;color:var(--muted);white-space:nowrap}
-.table-scroll{overflow:auto;max-height:480px}
-table{width:100%;border-collapse:collapse;white-space:nowrap;font-size:12px}
-thead th{position:sticky;top:0;background:#f7f9fc;color:#68788d;font-weight:600;text-align:left;padding:12px 15px;border-bottom:1px solid var(--line);z-index:1}
-tbody td{padding:11px 15px;border-bottom:1px solid #edf1f6;color:#334259}
-tbody tr:hover{background:#f8faff}
-tbody tr:last-child td{border-bottom:0}
-.num{text-align:right;font-variant-numeric:tabular-nums}
-.pill{display:inline-block;padding:4px 8px;border-radius:6px;background:#edf3ff;color:#315fb7;font-size:10px}
-.empty,.loading,.error{padding:45px 20px;text-align:center;color:var(--muted)}
-.error{color:#bd4545}
-.footer{display:flex;justify-content:space-between;gap:12px;margin-top:18px;color:#8b97a8;font-size:10px}
-.hidden{display:none!important}
-.target-status{display:inline-block;padding:4px 8px;border-radius:6px;font-size:10px;font-weight:600}
-.target-good{background:#e3f6ef;color:#16876b}
-.target-bad{background:#fff0e5;color:#b85d23}
-.target-unknown{background:#eef1f5;color:#657286}
-@media(max-width:1100px){
-  .app{padding:22px 20px}
-  .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .charts-grid,.charts-grid.second{grid-template-columns:1fr}
-  .chart-wrap{height:260px}
-}
-@media(max-width:620px){
-  .app{padding:16px 12px 28px}
-  .topbar{align-items:flex-start}
-  .status{display:none}
-  h1{font-size:21px}
-  .hero{padding:20px;border-radius:15px;align-items:flex-start;flex-direction:column}
-  .hero-meta{text-align:left}
-  .filters{padding:13px}
-  .filter,.filter select{width:100%;min-width:0}
-  .filter-note{margin-left:0;padding:0}
-  .kpis{gap:9px}
-  .kpi{padding:14px}
-  .kpi-value{font-size:22px}
-  .kpi-label{font-size:11px}
-  .kpi-icon{width:29px;height:29px}
-  .section-head{align-items:flex-start;flex-direction:column}
-  .chart-card{padding:15px}
-  .chart-wrap{height:235px}
-  .footer{flex-direction:column}
+body{margin:0;background:var(--bg);color:var(--text);
+  font-family:Tahoma,"Noto Sans Thai",Arial,sans-serif}
+header{background:#10243e;color:#fff;padding:22px 24px}
+.header-inner,.page{max-width:1400px;margin:auto}
+header h1{font-size:23px;margin:0 0 6px}
+header p{margin:0;color:#cbd5e1;font-size:13px}
+.page{padding:22px}
+.toolbar,.card{background:var(--card);border:1px solid var(--line);
+  border-radius:14px}
+.toolbar{display:flex;flex-wrap:wrap;gap:14px;align-items:end;
+  padding:16px;margin-bottom:18px}
+.field{display:flex;flex-direction:column;gap:6px;min-width:150px}
+label{font-size:12px;color:var(--muted);font-weight:700}
+input,select,button{font:inherit;border:1px solid #cbd5e1;
+  border-radius:8px;padding:9px 11px;background:white;color:var(--text)}
+button{cursor:pointer;background:var(--blue);color:#fff;border-color:var(--blue)}
+button.secondary{background:#fff;color:var(--text);border-color:#cbd5e1}
+.status{margin-left:auto;font-size:12px;color:var(--muted);align-self:center}
+.cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:14px;margin-bottom:18px}
+.kpi{padding:18px;min-height:120px}
+.kpi-label{font-size:13px;color:var(--muted);margin-bottom:12px}
+.kpi-value{font-size:30px;font-weight:800;letter-spacing:-.5px}
+.kpi-sub{font-size:12px;color:var(--muted);margin-top:7px}
+.card{padding:18px;margin-bottom:18px;min-width:0}
+.card h2{font-size:17px;margin:0 0 5px}
+.desc{font-size:12px;color:var(--muted);margin-bottom:15px;line-height:1.7}
+.table-wrap{overflow:auto}
+table{width:100%;border-collapse:collapse;font-size:13px;white-space:nowrap}
+th,td{padding:11px 12px;border-bottom:1px solid var(--line);text-align:left}
+th{background:#f8fafc;color:#475569;font-weight:700}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+tr:last-child td{border-bottom:0}
+.pill{display:inline-block;padding:4px 8px;border-radius:999px;
+  font-size:11px;font-weight:700}
+.good{background:#dcfce7;color:#166534}
+.bad{background:#fee2e2;color:#991b1b}
+.warn{background:#fef3c7;color:#92400e}
+.neutral{background:#e2e8f0;color:#475569}
+.progress{height:7px;background:#e2e8f0;border-radius:99px;
+  overflow:hidden;min-width:90px;margin-top:6px}
+.progress span{display:block;height:100%;background:var(--blue)}
+.target-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.target-item{border:1px solid var(--line);border-radius:10px;padding:14px}
+.target-title{font-weight:700;font-size:14px}
+.target-number{font-size:24px;font-weight:800;margin:10px 0 4px}
+.target-meta{font-size:12px;color:var(--muted)}
+.empty{padding:24px;text-align:center;color:var(--muted)}
+.error{color:var(--red)}
+footer{font-size:11px;color:var(--muted);padding:0 2px 20px;line-height:1.8}
+@media(max-width:900px){.cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){
+ .page{padding:12px}.cards{gap:8px}
+ .kpi{padding:13px;min-height:105px}
+ .kpi-value{font-size:23px}.toolbar{gap:10px}
+ .field{flex:1;min-width:130px}.status{width:100%;margin:0}
+ .target-grid{grid-template-columns:1fr}header{padding:18px 14px}
 }
 </style>
 </head>
-
 <body>
-<main class="app">
-
-<header class="topbar">
-  <div class="brand">
-    <div class="brandmark">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-        <path d="M4 19V5m0 14h17"/>
-        <rect x="7" y="11" width="3" height="5" rx=".6" fill="currentColor" stroke="none"/>
-        <rect x="12" y="7" width="3" height="9" rx=".6" fill="currentColor" stroke="none"/>
-        <rect x="17" y="4" width="3" height="12" rx=".6" fill="currentColor" stroke="none"/>
-      </svg>
-    </div>
-    <div>
-      <div class="eyebrow">Operations intelligence</div>
-      <h1>Executive Overview</h1>
-      <div class="subtitle">แดชบอร์ดภาพรวมการเดินรถและค่าใช้จ่าย</div>
-    </div>
-  </div>
-  <div class="status">
-    <span class="dot" id="statusDot"></span>
-    <span id="statusText">กำลังเชื่อมต่อข้อมูล</span>
+<header>
+  <div class="header-inner">
+    <h1>Fleet & Actual vs Target</h1>
+    <p>สรุปผลการดำเนินงานจาก Google Sheets</p>
   </div>
 </header>
 
-<section class="hero">
-  <div class="hero-copy">
-    <h2>ภาพรวมผลการดำเนินงาน</h2>
-    <p>ติดตามเที่ยวงาน ระยะทาง และค่าใช้จ่ายในมุมมองเดียว</p>
-  </div>
-  <div class="hero-meta">
-    <div class="period-label">Reporting period</div>
-    <div class="period-range" id="heroPeriod">กำลังโหลดข้อมูล…</div>
-  </div>
-</section>
-
-<section class="filters">
-  <div class="filter">
-    <label for="periodFilter">รอบรายงาน (วันที่ 26 – 25)</label>
-    <select id="periodFilter"><option value="">กำลังโหลดรอบรายงาน…</option></select>
-  </div>
-  <div class="filter">
-    <label for="branchFilter">สาขา</label>
-    <select id="branchFilter"><option value="all">ทุกสาขา</option></select>
-  </div>
-  <div class="filter-note" id="dataUpdated">ข้อมูลจาก Google Sheets</div>
-</section>
-
-<div class="section-head">
-  <div>
-    <h2>ตัวชี้วัดสำคัญ</h2>
-    <p>ค่าเฉลี่ยคำนวณต่อวันปฏิทินในช่วงเวลาที่เลือก รวมวันที่ไม่มีเที่ยวงาน</p>
-  </div>
-  <span class="section-kicker">Performance summary</span>
-</div>
-
-<section class="kpis">
-  <div class="kpi">
-    <div class="kpi-top">
-      <span class="kpi-label">เที่ยวงานทั้งหมด</span>
-      <span class="kpi-icon ib">↗</span>
+<main class="page">
+  <section class="toolbar">
+    <div class="field">
+      <label for="dateFrom">วันที่เริ่มต้น</label>
+      <input id="dateFrom" type="date">
     </div>
-    <div class="kpi-value" id="tripTotal">—</div>
-    <div class="kpi-foot">เฉลี่ย <strong id="tripAvg">—</strong> เที่ยว/วัน</div>
-  </div>
-  <div class="kpi">
-    <div class="kpi-top">
-      <span class="kpi-label">ระยะทางรวม</span>
-      <span class="kpi-icon ig">↗</span>
+    <div class="field">
+      <label for="dateTo">วันที่สิ้นสุด</label>
+      <input id="dateTo" type="date">
     </div>
-    <div class="kpi-value" id="distanceTotal">—</div>
-    <div class="kpi-foot">เฉลี่ย <strong id="distanceAvg">—</strong> กม./วัน</div>
-  </div>
-  <div class="kpi">
-    <div class="kpi-top">
-      <span class="kpi-label">ค่าใช้จ่ายรวม</span>
-      <span class="kpi-icon io">฿</span>
+    <div class="field">
+      <label for="branch">สาขา</label>
+      <select id="branch"><option value="">ทุกสาขา</option></select>
     </div>
-    <div class="kpi-value" id="costTotal">—</div>
-    <div class="kpi-foot">เฉลี่ย <strong id="costAvg">—</strong> บาท/วัน</div>
-  </div>
-  <div class="kpi">
-    <div class="kpi-top">
-      <span class="kpi-label">ทะเบียนหัวรถไม่ซ้ำ</span>
-      <span class="kpi-icon ic">▤</span>
-    </div>
-    <div class="kpi-value" id="truckTotal">—</div>
-    <div class="kpi-foot">จากข้อมูลในช่วงที่เลือก</div>
-  </div>
-</section>
+    <button id="applyBtn">ใช้ตัวกรอง</button>
+    <button id="refreshBtn" class="secondary">รีเฟรชข้อมูล</button>
+    <div class="status" id="loadStatus">กำลังโหลดข้อมูล...</div>
+  </section>
 
-<div class="section-head">
-  <div>
-    <h2>แนวโน้มรายวัน</h2>
-    <p>เปรียบเทียบปริมาณงาน ระยะทาง และค่าใช้จ่ายในแต่ละวัน</p>
-  </div>
-  <span class="section-kicker">Daily trends</span>
-</div>
-
-<section class="charts-grid">
-  <article class="chart-card">
-    <div class="chart-title-row">
-      <div>
-        <h3 class="chart-title">เที่ยวงานรายวัน</h3>
-        <div class="chart-desc">จำนวนรายการเดินรถ แยกตามวันที่</div>
-      </div>
-      <span class="chart-tag">เที่ยว / วัน</span>
+  <section class="cards">
+    <div class="card kpi">
+      <div class="kpi-label">รถของเรา (ทะเบียนไม่ซ้ำ)</div>
+      <div class="kpi-value" id="kpiVehicles">—</div>
+      <div class="kpi-sub">นับเฉพาะแถวที่ประเภทรถไม่ว่าง</div>
     </div>
-    <div class="chart-wrap"><canvas id="tripsChart"></canvas></div>
-    <div class="chart-foot">
-      <span><i class="legend-dot" style="background:#3267e3"></i>จำนวนเที่ยวในแต่ละวัน</span>
-      <span id="tripPeak">วันที่มีเที่ยวงานสูงสุด: —</span>
+    <div class="card kpi">
+      <div class="kpi-label">จำนวนเที่ยวรถของเรา</div>
+      <div class="kpi-value" id="kpiTrips">—</div>
+      <div class="kpi-sub">นับรายการที่ผ่านตัวกรอง</div>
     </div>
-  </article>
-
-  <article class="chart-card">
-    <div class="chart-title-row">
-      <div>
-        <h3 class="chart-title">ระยะทางรายวัน</h3>
-        <div class="chart-desc">ระยะทางรวมต่อวันตามข้อมูลต้นทาง</div>
-      </div>
-      <span class="chart-tag">กม. / วัน</span>
+    <div class="card kpi">
+      <div class="kpi-label">ระยะทางรวม</div>
+      <div class="kpi-value" id="kpiDistance">—</div>
+      <div class="kpi-sub">รวมระยะทางจากรายการรถของเรา</div>
     </div>
-    <div class="chart-wrap"><canvas id="distanceChart"></canvas></div>
-    <div class="chart-foot">
-      <span><i class="legend-dot" style="background:#16876b"></i>ระยะทางรายวัน</span>
-      <span id="distancePeak">วันที่ระยะทางสูงสุด: —</span>
+    <div class="card kpi">
+      <div class="kpi-label">ค่าใช้จ่ายรวม</div>
+      <div class="kpi-value" id="kpiCost">—</div>
+      <div class="kpi-sub">ค่าทางด่วน + ค่าห้องพัก + ค่าเดินทาง</div>
     </div>
-  </article>
-</section>
+  </section>
 
-<section class="charts-grid second">
-  <article class="chart-card">
-    <div class="chart-title-row">
-      <div>
-        <h3 class="chart-title">ค่าใช้จ่ายรายวัน</h3>
-        <div class="chart-desc">รวมค่าทางด่วน ค่าห้องพัก และค่าเดินทาง</div>
-      </div>
-      <span class="chart-tag">บาท / วัน</span>
+  <section class="card">
+    <h2>Actual เทียบ Target</h2>
+    <div class="desc">
+      Actual คำนวณจากข้อมูลรถของเราในช่วงวันที่และสาขาที่เลือก
+      Target จะใช้เฉพาะรายการที่จับคู่ตัวชี้วัดได้ และอยู่ในช่วงวันที่มีผลบังคับใช้
+      รายการที่ต้องใช้กลุ่มงานจะไม่ถูกจับคู่โดยคาดเดา
     </div>
-    <div class="chart-wrap short"><canvas id="costChart"></canvas></div>
-    <div class="chart-foot">
-      <span><i class="legend-dot" style="background:#d97732"></i>ค่าใช้จ่ายรวมต่อวัน</span>
-      <span id="costPeak">วันที่มีค่าใช้จ่ายสูงสุด: —</span>
+    <div id="targetSummary" class="target-grid">
+      <div class="empty">กำลังคำนวณ Target...</div>
     </div>
-  </article>
+  </section>
 
-  <article class="chart-card">
-    <div class="chart-title-row">
-      <div>
-        <h3 class="chart-title">สัดส่วนค่าใช้จ่าย</h3>
-        <div class="chart-desc">สัดส่วนต้นทุนในช่วงเวลาที่เลือก</div>
-      </div>
-      <span class="chart-tag">Cost mix</span>
+  <section class="card">
+    <h2>รายการ Target ทั้งหมด</h2>
+    <div class="desc">
+      แสดง Target ที่มีผลในช่วงวันที่ที่เลือก พร้อม Actual และสถานะการจับคู่
     </div>
-    <div class="chart-wrap short"><canvas id="costMixChart"></canvas></div>
-    <div class="chart-foot" id="costMixLegend"></div>
-  </article>
-</section>
-
-<!-- Target comparison -->
-<div class="section-head">
-  <div>
-    <h2>ผลการดำเนินงานเทียบเป้าหมาย</h2>
-    <p>เปรียบเทียบ Target กับผลจริง โดยใช้ตัวกรองรอบรายงานและสาขาด้านบน</p>
-  </div>
-  <span class="section-kicker">Target vs Actual</span>
-</div>
-
-<section class="table-card">
-  <div class="table-toolbar">
-    <div>
-      <h3>ตารางเปรียบเทียบ Target</h3>
-      <p>แสดงเฉพาะเป้าหมายที่มีผลในช่วงเวลาที่เลือก</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>ประเภท</th>
+            <th>รายการ</th>
+            <th>สาขา</th>
+            <th class="num">Target</th>
+            <th>หน่วย</th>
+            <th class="num">Actual</th>
+            <th class="num">% เทียบ Target</th>
+            <th>สถานะ</th>
+          </tr>
+        </thead>
+        <tbody id="targetBody">
+          <tr><td colspan="8" class="empty">กำลังโหลดข้อมูล...</td></tr>
+        </tbody>
+      </table>
     </div>
-    <div class="table-count" id="targetCount">0 รายการ</div>
-  </div>
-  <div class="table-scroll" id="targetContainer">
-    <div class="loading">กำลังโหลดข้อมูล Target…</div>
-  </div>
-</section>
+  </section>
 
-<div class="section-head">
-  <div>
-    <h2>รายละเอียดเที่ยวงาน</h2>
-    <p>รายการที่ผ่านตัวกรองสาขาและรอบรายงาน</p>
-  </div>
-  <span class="section-kicker">Trip details</span>
-</div>
-
-<section class="table-card">
-  <div class="table-toolbar">
-    <div>
-      <h3>รายการเดินรถ</h3>
-      <p>เรียงวันที่ล่าสุดขึ้นก่อน</p>
+  <section class="card">
+    <h2>สรุปข้อมูลจริงตามสาขา</h2>
+    <div class="desc">
+      แสดงเฉพาะรายการที่มีประเภทรถระบุไว้ ไม่รวมรถลูกค้าและงาน LOCO
     </div>
-    <div class="table-count" id="rowCount">0 รายการ</div>
-  </div>
-  <div class="table-scroll" id="tableContainer">
-    <div class="loading">กำลังโหลดข้อมูลจาก Google Sheets…</div>
-  </div>
-</section>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>สาขา</th>
+            <th class="num">จำนวนรถไม่ซ้ำ</th>
+            <th class="num">จำนวนเที่ยว</th>
+            <th class="num">ระยะทางรวม</th>
+            <th class="num">ค่าใช้จ่ายรวม</th>
+          </tr>
+        </thead>
+        <tbody id="branchBody">
+          <tr><td colspan="5" class="empty">กำลังโหลดข้อมูล...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
 
-<footer class="footer">
-  <span>WORK HOURS & TRANSPORT ANALYTICS</span>
-  <span>แหล่งข้อมูล: Google Sheets · อัปเดตตามข้อมูลที่เผยแพร่</span>
-</footer>
+  <section class="card">
+    <h2>สถานะข้อมูล</h2>
+    <div id="dataInfo" class="desc">กำลังตรวจสอบข้อมูล...</div>
+  </section>
 
+  <footer>
+    หมายเหตุ: จำนวนรถนับทะเบียนหัวและทะเบียนหางเป็นชุดเดียวกัน
+    หากไม่มีทะเบียนหัว/หาง จะใช้ LTS เป็นรหัสสำรอง
+    แถวที่ไม่มีข้อมูลระบุรถจะไม่ถูกนำมานับจำนวนรถ
+    การเทียบ Target ต้องอาศัยชื่อรายการและหน่วยที่สอดคล้องกับข้อมูลจริง
+  </footer>
 </main>
 
 <script>
-const SHEET_CSV_URL =
-'https://docs.google.com/spreadsheets/d/e/2PACX-1vSWLQuTDK81qBHrVGIrbfLMQd2SbGcmeVPqgnd5RNzIKEYFYgenm6kofz8bzaLI-wmSnY6oZE8759Vy/pub?gid=1490125939&single=true&output=csv';
+"use strict";
 
-const TARGET_CSV_URL =
-'https://docs.google.com/spreadsheets/d/e/2PACX-1vSWLQuTDK81qBHrVGIrbfLMQd2SbGcmeVPqgnd5RNzIKEYFYgenm6kofz8bzaLI-wmSnY6oZE8759Vy/pub?gid=1776706184&single=true&output=csv';
+const DATA_URL =
+  "https://docs.google.com/spreadsheets/d/e/2PACX-1vSWLQuTDK81qBHrVGIrbfLMQd2SbGcmeVPqgnd5RNzIKEYFYgenm6kofz8bzaLI-wmSnY6oZE8759Vy/pub?gid=1490125939&single=true&output=csv";
 
-const moneyFmt = new Intl.NumberFormat('th-TH',{maximumFractionDigits:0});
-const decimalFmt = new Intl.NumberFormat('th-TH',{maximumFractionDigits:1});
-const intFmt = new Intl.NumberFormat('th-TH',{maximumFractionDigits:0});
+const TARGET_URL =
+  "https://docs.google.com/spreadsheets/d/e/2PACX-1vSWLQuTDK81qBHrVGIrbfLMQd2SbGcmeVPqgnd5RNzIKEYFYgenm6kofz8bzaLI-wmSnY6oZE8759Vy/pub?gid=1776706184&single=true&output=csv";
 
 let allRows = [];
-let targetRows = [];
-let charts = {};
+let allTargets = [];
+let dataLoadError = "";
+let targetLoadError = "";
 
 const $ = id => document.getElementById(id);
 
-function norm(s){
-  return String(s??'')
-    .replace(/^\uFEFF/,'')
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g,' ');
+function text(value) {
+  return String(value ?? "").trim();
 }
 
-function pick(row,candidates){
-  for(const key of candidates){
-    const k=Object.keys(row).find(x=>norm(x)===norm(key));
-    if(k!==undefined)return row[k];
-  }
-  return '';
+function norm(value) {
+  return text(value).toLowerCase().replace(/\s+/g, " ");
 }
 
-function num(v){
-  if(typeof v==='number')return v;
-  let s=String(v??'').trim();
-  if(!s||s==='-'||s==='—')return 0;
-  s=s.replace(/[฿,\s]/g,'').replace(/บาท/g,'');
-  const n=Number(s);
-  return Number.isFinite(n)?n:0;
+function number(value) {
+  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+  let s = text(value).replace(/,/g, "").replace(/[฿\s]/g, "");
+  if (!s || s === "-" || s === "—") return 0;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : 0;
 }
 
-function parseDate(v){
-  if(v instanceof Date){
-    return isNaN(v)?null:new Date(v.getFullYear(),v.getMonth(),v.getDate());
-  }
-
-  let s=String(v??'').trim();
-  if(!s)return null;
-
-  let m=s.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})$/);
-  if(m){
-    const d=+m[1], mo=+m[2]-1;
-    let y=+m[3];
-    if(y<100)y+=y<50?2000:1900;
-    if(y>=2400)y-=543;
-    const dt=new Date(y,mo,d);
-    return isNaN(dt)||dt.getDate()!==d||dt.getMonth()!==mo?null:dt;
-  }
-
-  m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
-  if(m){
-    let y=+m[1];
-    if(y>=2400)y-=543;
-    const dt=new Date(y,+m[2]-1,+m[3]);
-    return isNaN(dt)?null:dt;
-  }
-
-  const dt=new Date(s);
-  if(isNaN(dt))return null;
-  return new Date(dt.getFullYear(),dt.getMonth(),dt.getDate());
-}
-
-function dateKey(d){
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-}
-
-function shortDate(d){
-  return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
-}
-
-function thaiDate(d){
-  return d.toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'});
-}
-
-function periodKey(d){
-  let y=d.getFullYear(),m=d.getMonth();
-  if(d.getDate()<26){
-    m--;
-    if(m<0){m=11;y--;}
-  }
-  return `${y}-${String(m+1).padStart(2,'0')}`;
-}
-
-function periodBounds(key){
-  const [y,m]=key.split('-').map(Number);
-  return {start:new Date(y,m-1,26),end:new Date(y,m,25)};
-}
-
-function periodLabel(key){
-  const b=periodBounds(key);
-  return `${thaiDate(b.start)} – ${thaiDate(b.end)}`;
-}
-
-function daysBetween(a,b){
-  const out=[];
-  let d=new Date(a);
-  while(d<=b&&out.length<800){
-    out.push(new Date(d));
-    d.setDate(d.getDate()+1);
-  }
-  return out;
-}
-
-function escapeHtml(s){
-  return String(s??'').replace(/[&<>"']/g,c=>({
-    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
-  }[c]));
-}
-
-function normalizeRow(r){
-  const date=parseDate(pick(r,['ว/ด/ป','วันที่','date']));
-  return {
-    raw:r,
-    date,
-    dateKey:date?dateKey(date):'',
-    period:date?periodKey(date):'',
-    lts:String(pick(r,['LTS','เลขเที่ยว','เที่ยวงาน'])||'').trim(),
-    plate:String(pick(r,['ทะเบียนหัว','ทะเบียนหัวรถ','ทะเบียนรถ'])||'').trim(),
-    trailer:String(pick(r,['เบอร์หาง','ทะเบียนหาง'])||'').trim(),
-    driver:String(pick(r,['ชื่อพขร. (หลัก)','ชื่อพขร.หลัก','ชื่อคนขับ'])||'').trim(),
-    helper:String(pick(r,['ชื่อพขร. (เสริม)','ชื่อพขร.เสริม'])||'').trim(),
-    destination:String(pick(r,['ปลายทาง'])||'').trim(),
-    startKm:num(pick(r,['เลขไมล์เริ่ม'])),
-    endKm:num(pick(r,['เลขไมล์สิ้นสุด'])),
-    toll:num(pick(r,['ค่าทางด่วน (บาท)','ค่าทางด่วน'])),
-    hotel:num(pick(r,['ค่าห้องพัก (บาท)','ค่าห้องพัก'])),
-    travel:num(pick(r,['ค่าเดินทาง (บาท)','ค่าเดินทาง'])),
-    vehicleType:String(pick(r,['master ประเภทรถ','ประเภทรถ'])||'').trim(),
-    branch:String(pick(r,['สาขา','branch'])||'ไม่ระบุ').trim()||'ไม่ระบุ',
-    distance:num(pick(r,['ระยะทางรวม','ระยะทาง']))
-  };
-}
-
-function normalizeTarget(r){
-  return {
-    raw:r,
-    type:String(pick(r,['ประเภท'])||'').trim(),
-    item:String(pick(r,['รายการ'])||'').trim(),
-    group:String(pick(r,['กลุ่มงาน'])||'').trim(),
-    branch:String(pick(r,['สาขา'])||'').trim(),
-    target:num(pick(r,['ค่า Target','Target','เป้าหมาย'])),
-    unit:String(pick(r,['หน่วย'])||'').trim(),
-    start:parseDate(pick(r,['เริ่มใช้วันที่'])),
-    end:parseDate(pick(r,['สิ้นสุดวันที่']))
-  };
-}
-
-function money(v){return moneyFmt.format(Math.round(v||0));}
-function dec(v){return decimalFmt.format(v||0);}
-
-function sum(rows,key){
-  return rows.reduce((s,r)=>s+(r[key]||0),0);
-}
-
-function selectedRows(){
-  const p=$('periodFilter').value;
-  const b=$('branchFilter').value;
-  return allRows.filter(r=>
-    (!p||r.period===p)&&(b==='all'||r.branch===b)
-  );
-}
-
-function branchRows(){
-  const b=$('branchFilter').value;
-  return allRows.filter(r=>b==='all'||r.branch===b);
-}
-
-function periodDays(rows){
-  const key=$('periodFilter').value;
-  if(key){
-    const b=periodBounds(key);
-    return daysBetween(b.start,b.end);
-  }
-  const valid=rows.filter(r=>r.date).map(r=>r.date).sort((a,b)=>a-b);
-  if(!valid.length)return [];
-  return daysBetween(valid[0],valid[valid.length-1]);
-}
-
-function setText(id,value){
-  $(id).textContent=value;
-}
-
-function setStatus(ok,text){
-  setText('statusText',text);
-  $('statusDot').style.background=ok?'#22a879':'#d95757';
-  $('statusDot').style.boxShadow=ok
-    ?'0 0 0 4px #22a87918'
-    :'0 0 0 4px #d9575718';
-}
-
-function buildPeriods(){
-  const vals=[...new Set(allRows.filter(r=>r.date).map(r=>r.period))].sort().reverse();
-
-  $('periodFilter').innerHTML=
-    '<option value="">ทุกช่วงข้อมูล</option>'+
-    vals.map(v=>`<option value="${v}">${escapeHtml(periodLabel(v))}</option>`).join('');
-
-  if(vals.length)$('periodFilter').value=vals[0];
-
-  const branches=[...new Set(allRows.map(r=>r.branch).filter(Boolean))]
-    .sort((a,b)=>a.localeCompare(b,'th'));
-
-  $('branchFilter').innerHTML=
-    '<option value="all">ทุกสาขา</option>'+
-    branches.map(v=>`<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join('');
-}
-
-function updateHero(rows){
-  const p=$('periodFilter').value;
-
-  if(p){
-    setText('heroPeriod',periodLabel(p));
-  }else{
-    const ds=rows.filter(r=>r.date).map(r=>r.date).sort((a,b)=>a-b);
-    setText('heroPeriod',ds.length
-      ?`${thaiDate(ds[0])} – ${thaiDate(ds[ds.length-1])}`
-      :'ไม่มีข้อมูล');
-  }
-
-  setText('dataUpdated',
-    `ข้อมูล ${rows.length.toLocaleString('th-TH')} รายการ · `+
-    new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})
-  );
-}
-
-function updateKpis(rows,days){
-  const nDays=Math.max(days.length,1);
-  const trips=rows.length;
-  const distance=sum(rows,'distance');
-  const cost=sum(rows,'toll')+sum(rows,'hotel')+sum(rows,'travel');
-  const trucks=new Set(rows.map(r=>r.plate).filter(Boolean)).size;
-
-  setText('tripTotal',intFmt.format(trips));
-  setText('tripAvg',dec(trips/nDays));
-  setText('distanceTotal',money(distance));
-  setText('distanceAvg',dec(distance/nDays));
-  setText('costTotal',money(cost));
-  setText('costAvg',money(cost/nDays));
-  setText('truckTotal',intFmt.format(trucks));
-}
-
-function dailySeries(rows,days){
-  const map=new Map(days.map(d=>[
-    dateKey(d),{trips:0,distance:0,cost:0}
-  ]));
-
-  rows.forEach(r=>{
-    if(!map.has(r.dateKey))return;
-    const o=map.get(r.dateKey);
-    o.trips++;
-    o.distance+=r.distance;
-    o.cost+=r.toll+r.hotel+r.travel;
+function fmt(value, digits = 0) {
+  return Number(value || 0).toLocaleString("th-TH", {
+    maximumFractionDigits: digits,
+    minimumFractionDigits: 0
   });
-
-  return {
-    labels:days.map(shortDate),
-    fullLabels:days.map(thaiDate),
-    trips:days.map(d=>map.get(dateKey(d))?.trips||0),
-    distance:days.map(d=>map.get(dateKey(d))?.distance||0),
-    cost:days.map(d=>map.get(dateKey(d))?.cost||0)
-  };
 }
 
-const gridColor='#edf1f6';
-const tickColor='#7c899c';
+function money(value) {
+  return fmt(value, 2);
+}
 
-function commonOptions(format='number'){
-  return {
-    responsive:true,
-    maintainAspectRatio:false,
-    interaction:{mode:'index',intersect:false},
-    plugins:{
-      legend:{display:false},
-      tooltip:{
-        backgroundColor:'#14243b',
-        padding:11,
-        displayColors:false,
-        titleFont:{family:'IBM Plex Sans Thai',weight:'600'},
-        bodyFont:{family:'IBM Plex Sans Thai'},
-        callbacks:{
-          label:c=>`${c.dataset.label||''}: ${
-            format==='money'?money(c.parsed.y)+' บาท':
-            format==='km'?money(c.parsed.y)+' กม.':
-            intFmt.format(c.parsed.y)+' เที่ยว'
-          }`
+function parseCSV(csv) {
+  const rows = [];
+  let row = [], field = "", quoted = false;
+
+  for (let i = 0; i < csv.length; i++) {
+    const c = csv[i];
+
+    if (quoted) {
+      if (c === '"') {
+        if (csv[i + 1] === '"') {
+          field += '"';
+          i++;
+        } else {
+          quoted = false;
         }
+      } else {
+        field += c;
       }
-    },
-    scales:{
-      x:{
-        grid:{display:false},
-        ticks:{
-          color:tickColor,maxRotation:0,autoSkip:true,maxTicksLimit:16,
-          font:{family:'IBM Plex Sans Thai',size:10}
-        },
-        border:{display:false}
-      },
-      y:{
-        beginAtZero:true,
-        grid:{color:gridColor},
-        ticks:{
-          color:tickColor,precision:0,
-          font:{family:'Inter',size:10},
-          callback:v=>format==='money'||format==='km'?money(v):v
-        },
-        border:{display:false}
-      }
+    } else if (c === '"') {
+      quoted = true;
+    } else if (c === ",") {
+      row.push(field);
+      field = "";
+    } else if (c === "\n") {
+      row.push(field);
+      rows.push(row);
+      row = [];
+      field = "";
+    } else if (c !== "\r") {
+      field += c;
     }
-  };
-}
+  }
 
-function makeChart(id,type,labels,data,color,format){
-  if(charts[id])charts[id].destroy();
+  if (field.length || row.length) {
+    row.push(field);
+    rows.push(row);
+  }
 
-  const ctx=$(id).getContext('2d');
-  const opts=commonOptions(format);
+  if (!rows.length) return [];
 
-  if(type==='bar'){
-    opts.plugins.tooltip.callbacks.label=c=>
-      `${c.dataset.label}: ${
-        format==='money'?money(c.parsed.y)+' บาท':
-        format==='km'?money(c.parsed.y)+' กม.':
-        intFmt.format(c.parsed.y)+' เที่ยว'
-      }`;
-
-    charts[id]=new Chart(ctx,{
-      type:'bar',
-      data:{
-        labels,
-        datasets:[{
-          label:format==='money'?'ค่าใช้จ่าย':
-                 format==='km'?'ระยะทาง':'เที่ยวงาน',
-          data,
-          backgroundColor:color,
-          borderRadius:4,
-          borderSkipped:false,
-          maxBarThickness:25
-        }]
-      },
-      options:opts
+  const headers = rows.shift().map(h => text(h).replace(/^\uFEFF/, ""));
+  return rows
+    .filter(r => r.some(v => text(v) !== ""))
+    .map(r => {
+      const obj = {};
+      headers.forEach((h, i) => obj[h] = r[i] ?? "");
+      return obj;
     });
+}
+
+function get(row, names) {
+  for (const name of names) {
+    if (Object.prototype.hasOwnProperty.call(row, name) &&
+        text(row[name]) !== "") return row[name];
   }
+
+  const keys = Object.keys(row);
+  for (const name of names) {
+    const match = keys.find(k => norm(k) === norm(name));
+    if (match && text(row[match]) !== "") return row[match];
+  }
+  return "";
 }
 
-function peakText(values,days,unit){
-  if(!values.length||!Math.max(...values))return 'ไม่มีข้อมูล';
-  const i=values.indexOf(Math.max(...values));
-  return `${thaiDate(days[i])} · ${money(values[i])} ${unit}`;
+function parseDate(value) {
+  const s = text(value);
+  if (!s) return null;
+
+  // Google Sheets serial date
+  if (/^\d{5}(\.\d+)?$/.test(s)) {
+    const serial = Number(s);
+    const d = new Date(Date.UTC(1899, 11, 30) + serial * 86400000);
+    return isNaN(d) ? null : d;
+  }
+
+  // ISO yyyy-mm-dd
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (m) {
+    let y = Number(m[1]), mo = Number(m[2]), day = Number(m[3]);
+    if (y > 2400) y -= 543;
+    const d = new Date(y, mo - 1, day);
+    return isNaN(d) ? null : d;
+  }
+
+  // Thai/common dd/mm/yyyy or dd-mm-yyyy
+  m = s.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})$/);
+  if (m) {
+    const day = Number(m[1]), mo = Number(m[2]);
+    let y = Number(m[3]);
+    if (y < 100) y += 2000;
+    if (y > 2400) y -= 543;
+    const d = new Date(y, mo - 1, day);
+    return isNaN(d) ? null : d;
+  }
+
+  const d = new Date(s);
+  if (isNaN(d)) return null;
+  if (d.getFullYear() > 2400) d.setFullYear(d.getFullYear() - 543);
+  return d;
 }
 
-function updateCharts(rows,days){
-  const s=dailySeries(rows,days);
+function dateKey(date) {
+  if (!date) return "";
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
 
-  makeChart('tripsChart','bar',s.labels,s.trips,'#3267e3','number');
-  makeChart('distanceChart','bar',s.labels,s.distance,'#16876b','km');
-  makeChart('costChart','bar',s.labels,s.cost,'#d97732','money');
+function normalizeRow(r) {
+  const date = parseDate(get(r, ["ว/ด/ป", "วันที่", "วัน/เดือน/ปี", "Date"]));
+  const vehicleType = text(get(r, ["ประเภทรถ", "master ประเภทรถ"]));
 
-  setText('tripPeak','สูงสุด: '+peakText(s.trips,days,'เที่ยว'));
-  setText('distancePeak','สูงสุด: '+peakText(s.distance,days,'กม.'));
-  setText('costPeak','สูงสุด: '+peakText(s.cost,days,'บาท'));
+  return {
+    raw: r,
+    date,
+    dateKey: dateKey(date),
+    lts: text(get(r, ["LTS", "Lts", "เลข LTS"])),
+    headPlate: text(get(r, ["ทะเบียนหัว", "ทะเบียนรถหัว", "ทะเบียนรถ"])),
+    tailPlate: text(get(r, ["เบอร์หาง", "ทะเบียนหาง", "เบอร์รถหาง"])),
+    driver: text(get(r, ["ชื่อพขร. (หลัก)", "ชื่อ พขร. (หลัก)"])),
+    branch: text(get(r, ["สาขา", "Branch"])) || "ไม่ระบุสาขา",
+    vehicleType,
+    distance: number(get(r, ["ระยะทางรวม", "ระยะทาง", "Distance"])),
+    toll: number(get(r, ["ค่าทางด่วน (บาท)", "ค่าทางด่วน"])),
+    hotel: number(get(r, ["ค่าห้องพัก (บาท)", "ค่าห้องพัก"])),
+    travel: number(get(r, ["ค่าเดินทาง (บาท)", "ค่าเดินทาง"]))
+  };
+}
 
-  const toll=sum(rows,'toll');
-  const hotel=sum(rows,'hotel');
-  const travel=sum(rows,'travel');
-  const vals=[toll,hotel,travel];
-  const labels=['ค่าทางด่วน','ค่าห้องพัก','ค่าเดินทาง'];
-  const colors=['#3267e3','#31b6c8','#e9a15b'];
+function normalizeTarget(r) {
+  return {
+    raw: r,
+    type: text(get(r, ["ประเภท"])),
+    item: text(get(r, ["รายการ"])),
+    group: text(get(r, ["กลุ่มงาน"])),
+    branch: text(get(r, ["สาขา"])),
+    target: number(get(r, ["ค่า Target", "Target"])),
+    unit: text(get(r, ["หน่วย"])),
+    start: parseDate(get(r, ["เริ่มใช้วันที่"])),
+    end: parseDate(get(r, ["สิ้นสุดวันที่"]))
+  };
+}
 
-  if(charts.costMixChart)charts.costMixChart.destroy();
+function isOwnFleetRow(row) {
+  return text(row.vehicleType) !== "";
+}
 
-  charts.costMixChart=new Chart($('costMixChart'),{
-    type:'doughnut',
-    data:{
-      labels,
-      datasets:[{data:vals,backgroundColor:colors,borderWidth:0,hoverOffset:5}]
-    },
-    options:{
-      responsive:true,
-      maintainAspectRatio:false,
-      cutout:'68%',
-      plugins:{
-        legend:{
-          display:true,
-          position:'bottom',
-          labels:{
-            usePointStyle:true,pointStyle:'circle',padding:18,boxWidth:7,
-            font:{family:'IBM Plex Sans Thai',size:11},color:'#66758a'
-          }
-        },
-        tooltip:{
-          backgroundColor:'#14243b',
-          padding:11,
-          callbacks:{
-            label:c=>`${c.label}: ${money(c.raw)} บาท (${
-              sum(vals)?(c.raw/sum(vals)*100).toFixed(1):0
-            }%)`
-          }
-        }
-      }
-    }
+function ownFleetRows(rows) {
+  return rows.filter(isOwnFleetRow);
+}
+
+function vehicleKey(row) {
+  const head = text(row.headPlate).toUpperCase();
+  const tail = text(row.tailPlate).toUpperCase();
+  const lts = text(row.lts).toUpperCase();
+
+  if (head || tail) return `PLATE:${head}|${tail}`;
+  if (lts) return `LTS:${lts}`;
+  return "";
+}
+
+function countUniqueOwnVehicles(rows) {
+  return new Set(
+    ownFleetRows(rows).map(vehicleKey).filter(Boolean)
+  ).size;
+}
+
+function sum(rows, key) {
+  return rows.reduce((total, row) => total + (Number(row[key]) || 0), 0);
+}
+
+function totalCost(rows) {
+  return sum(rows, "toll") + sum(rows, "hotel") + sum(rows, "travel");
+}
+
+function selectedRows() {
+  const from = $("dateFrom").value;
+  const to = $("dateTo").value;
+  const branch = $("branch").value;
+
+  return allRows.filter(r => {
+    if (from && (!r.dateKey || r.dateKey < from)) return false;
+    if (to && (!r.dateKey || r.dateKey > to)) return false;
+    if (branch && r.branch !== branch) return false;
+    return true;
+  });
+}
+
+function targetActiveInRange(t, from, to) {
+  // หากไม่กำหนดวันที่ใน Target ให้ถือว่าไม่มีข้อจำกัดด้านวัน
+  if (!t.start && !t.end) return true;
+
+  const rangeStart = from ? parseDate(from) : null;
+  const rangeEnd = to ? parseDate(to) : null;
+
+  if (rangeStart && t.end && t.end < rangeStart) return false;
+  if (rangeEnd && t.start && t.start > rangeEnd) return false;
+  return true;
+}
+
+function uniqueBranches() {
+  return [...new Set(allRows.map(r => r.branch).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, "th"));
+}
+
+function setupBranches() {
+  const select = $("branch");
+  const previous = select.value;
+  select.innerHTML = '<option value="">ทุกสาขา</option>';
+
+  uniqueBranches().forEach(branch => {
+    const option = document.createElement("option");
+    option.value = branch;
+    option.textContent = branch;
+    select.appendChild(option);
   });
 
-  $('costMixLegend').innerHTML=labels.map((l,i)=>
-    `<span><i class="legend-dot" style="background:${colors[i]}"></i>${l}: <b>${money(vals[i])}</b> บาท</span>`
-  ).join('');
-}
-
-function renderTable(rows){
-  const sorted=[...rows].sort(
-    (a,b)=>(b.date?.getTime()||0)-(a.date?.getTime()||0)
-  );
-
-  setText('rowCount',`${sorted.length.toLocaleString('th-TH')} รายการ`);
-
-  if(!sorted.length){
-    $('tableContainer').innerHTML=
-      '<div class="empty">ไม่พบรายการตามตัวกรองที่เลือก</div>';
-    return;
+  if ([...select.options].some(o => o.value === previous)) {
+    select.value = previous;
   }
-
-  const html=`<table>
-    <thead><tr>
-      <th>วันที่</th><th>LTS</th><th>ทะเบียนหัว</th><th>เบอร์หาง</th>
-      <th>พนักงานขับรถ</th><th>ปลายทาง</th><th>สาขา</th>
-      <th class="num">ระยะทาง (กม.)</th>
-      <th class="num">ทางด่วน (บาท)</th>
-      <th class="num">ห้องพัก (บาท)</th>
-      <th class="num">ค่าเดินทาง (บาท)</th>
-    </tr></thead>
-    <tbody>${sorted.map(r=>`<tr>
-      <td>${r.date?escapeHtml(thaiDate(r.date)):'—'}</td>
-      <td>${escapeHtml(r.lts||'—')}</td>
-      <td><span class="pill">${escapeHtml(r.plate||'—')}</span></td>
-      <td>${escapeHtml(r.trailer||'—')}</td>
-      <td>${escapeHtml(r.driver||'—')}</td>
-      <td>${escapeHtml(r.destination||'—')}</td>
-      <td>${escapeHtml(r.branch||'—')}</td>
-      <td class="num">${money(r.distance)}</td>
-      <td class="num">${money(r.toll)}</td>
-      <td class="num">${money(r.hotel)}</td>
-      <td class="num">${money(r.travel)}</td>
-    </tr>`).join('')}</tbody>
-  </table>`;
-
-  $('tableContainer').innerHTML=html;
 }
 
-/* =========================
-   TARGET VS ACTUAL
-========================= */
+function setDefaultDates() {
+  if ($("dateFrom").value || $("dateTo").value) return;
 
-function targetMetric(t){
-  const s=(t.item+' '+t.type).toLowerCase();
+  const dates = allRows.map(r => r.dateKey).filter(Boolean).sort();
+  if (!dates.length) return;
 
-  if(/ทางด่วน/.test(s))return 'toll';
-  if(/ห้องพัก|ค่าที่พัก/.test(s))return 'hotel';
-  if(/ค่าเดินทาง/.test(s))return 'travel';
-  if(/ค่าใช้จ่ายรวม|ต้นทุนรวม|ค่าใช้จ่ายทั้งหมด/.test(s))return 'cost';
-  if(/ระยะทาง|กิโลเมตร|กม\./.test(s))return 'distance';
-  if(/เที่ยวงาน|จำนวนเที่ยว|เที่ยวรถ/.test(s))return 'trips';
-  if(/ทะเบียนหัว|จำนวนรถ|รถไม่ซ้ำ/.test(s))return 'trucks';
-
-  return '';
+  // ค่าเริ่มต้นแสดงข้อมูลทั้งหมดที่มี
+  $("dateFrom").value = dates[0];
+  $("dateTo").value = dates[dates.length - 1];
 }
 
-function isBlankOrAll(s){
-  return !s || /^(ทั้งหมด|ทุกสาขา|all|ไม่ระบุ|-)$/.test(String(s).trim().toLowerCase());
+function renderKPIs(rows) {
+  const fleet = ownFleetRows(rows);
+  $("kpiVehicles").textContent = fmt(countUniqueOwnVehicles(fleet));
+  $("kpiTrips").textContent = fmt(fleet.length);
+  $("kpiDistance").textContent = fmt(sum(fleet, "distance"), 2);
+  $("kpiCost").textContent = money(totalCost(fleet));
 }
 
-function activeTarget(t,start,end){
-  return (!t.start||t.start<=end)&&(!t.end||t.end>=start);
-}
+function renderBranches(rows) {
+  const groups = new Map();
 
-function targetDateWindow(t,start,end){
-  const a=t.start&&t.start>start?t.start:start;
-  const b=t.end&&t.end<end?t.end:end;
-  return a<=b?{start:a,end:b}:null;
-}
-
-function metricActual(rows,metric,start,end,unit){
-  const inWindow=rows.filter(r=>
-    r.date&&r.date>=start&&r.date<=end
-  );
-
-  let value=0;
-
-  if(metric==='trips')value=inWindow.length;
-  else if(metric==='distance')value=sum(inWindow,'distance');
-  else if(metric==='toll')value=sum(inWindow,'toll');
-  else if(metric==='hotel')value=sum(inWindow,'hotel');
-  else if(metric==='travel')value=sum(inWindow,'travel');
-  else if(metric==='cost'){
-    value=sum(inWindow,'toll')+
-          sum(inWindow,'hotel')+
-          sum(inWindow,'travel');
-  }
-  else if(metric==='trucks'){
-    value=new Set(inWindow.map(r=>r.plate).filter(Boolean)).size;
-  }
-
-  if(/\/วัน|ต่อวัน/.test(unit)){
-    const count=daysBetween(start,end).length;
-    value=count?value/count:0;
-  }
-
-  return value;
-}
-
-function renderTargets(){
-  const container=$('targetContainer');
-
-  if(!targetRows.length){
-    setText('targetCount','0 รายการ');
-    container.innerHTML=
-      '<div class="empty">ไม่มีข้อมูล Target ที่โหลดได้ กรุณาตรวจสอบการเผยแพร่ชีต Target เป็น CSV</div>';
-    return;
-  }
-
-  const period=$('periodFilter').value;
-  const selectedBranch=$('branchFilter').value;
-
-  let start,end;
-
-  if(period){
-    ({start,end}=periodBounds(period));
-  }else{
-    const dates=allRows.filter(r=>r.date).map(r=>r.date).sort((a,b)=>a-b);
-    if(!dates.length){
-      setText('targetCount','0 รายการ');
-      container.innerHTML='<div class="empty">ไม่มีช่วงวันที่สำหรับเปรียบเทียบ</div>';
-      return;
-    }
-    start=dates[0];
-    end=dates[dates.length-1];
-  }
-
-  const filtered=targetRows.filter(t=>{
-    if(selectedBranch!=='all'&&!isBlankOrAll(t.branch)&&t.branch!==selectedBranch){
-      return false;
-    }
-    return activeTarget(t,start,end);
+  ownFleetRows(rows).forEach(r => {
+    if (!groups.has(r.branch)) groups.set(r.branch, []);
+    groups.get(r.branch).push(r);
   });
 
-  setText('targetCount',`${filtered.length.toLocaleString('th-TH')} รายการ`);
+  const body = $("branchBody");
+  body.replaceChildren();
 
-  if(!filtered.length){
-    container.innerHTML=
-      '<div class="empty">ไม่มี Target ที่มีผลในช่วงเวลาหรือสาขาที่เลือก</div>';
+  const names = [...groups.keys()].sort((a, b) => a.localeCompare(b, "th"));
+  if (!names.length) {
+    body.innerHTML = '<tr><td colspan="5" class="empty">ไม่พบข้อมูลรถของเราในช่วงที่เลือก</td></tr>';
     return;
   }
 
-  const html=`<table>
-    <thead><tr>
-      <th>ประเภท</th>
-      <th>รายการ</th>
-      <th>กลุ่มงาน</th>
-      <th>สาขา</th>
-      <th class="num">Target</th>
-      <th class="num">ผลจริง</th>
-      <th class="num">ส่วนต่าง</th>
-      <th class="num">% บรรลุเป้าหมาย</th>
-      <th>สถานะ</th>
-      <th>ช่วงที่มีผล</th>
-    </tr></thead>
-    <tbody>${filtered.map(t=>{
-      const metric=targetMetric(t);
-      const window=targetDateWindow(t,start,end);
-
-      let actual=null;
-      let delta=null;
-      let achievement=null;
-      let status='ยังจับคู่ไม่ได้';
-
-      // ไม่มีคอลัมน์กลุ่มงานในข้อมูลเดินรถ จึงไม่เดากลุ่มงานจากประเภทรถ
-      const groupSupported=isBlankOrAll(t.group);
-
-      if(metric&&window&&groupSupported){
-        let actualRows=allRows.filter(r=>
-          r.date&&r.date>=window.start&&r.date<=window.end
-        );
-
-        if(period){
-          actualRows=actualRows.filter(r=>r.period===period);
-        }
-
-        // เป้าหมายระบุสาขา: ใช้ข้อมูลของสาขานั้น
-        // เป้าหมายไม่ระบุสาขา: ใช้ผลรวมตามตัวกรองสาขาที่เลือก
-        if(!isBlankOrAll(t.branch)){
-          actualRows=actualRows.filter(r=>r.branch===t.branch);
-        }else if(selectedBranch!=='all'){
-          actualRows=actualRows.filter(r=>r.branch===selectedBranch);
-        }
-
-        actual=metricActual(
-          actualRows,metric,window.start,window.end,t.unit
-        );
-
-        const isCost=['cost','toll','hotel','travel'].includes(metric);
-
-        // ต้นทุน: ต่ำกว่าเป้าหมายถือว่าดี
-        // ปริมาณงาน: เท่ากับหรือสูงกว่าเป้าหมายถือว่าบรรลุ
-        delta=isCost?t.target-actual:actual-t.target;
-
-        if(isCost){
-          achievement=actual===0
-            ?(t.target>=0?100:0)
-            :(t.target/actual)*100;
-          status=actual<=t.target?'บรรลุเป้าหมาย':'ไม่บรรลุเป้าหมาย';
-        }else{
-          achievement=t.target===0
-            ?(actual===0?100:null)
-            :(actual/t.target)*100;
-          status=actual>=t.target?'บรรลุเป้าหมาย':'ไม่บรรลุเป้าหมาย';
-        }
-      }
-
-      const isMoney=['cost','toll','hotel','travel'].includes(metric);
-      const targetText=isMoney?money(t.target):dec(t.target);
-      const actualText=actual===null?'—':(isMoney?money(actual):dec(actual));
-      const deltaText=delta===null?'—':
-        `${delta>0?'+':''}${isMoney?money(delta):dec(delta)}`;
-      const pctText=achievement===null?'—':`${dec(achievement)}%`;
-
-      const statusClass=status==='บรรลุเป้าหมาย'
-        ?'target-status target-good'
-        :status==='ไม่บรรลุเป้าหมาย'
-          ?'target-status target-bad'
-          :'target-status target-unknown';
-
-      const dateText=window
-        ?`${thaiDate(window.start)} – ${thaiDate(window.end)}`
-        :'—';
-
-      return `<tr>
-        <td>${escapeHtml(t.type||'—')}</td>
-        <td>${escapeHtml(t.item||'—')}</td>
-        <td>${escapeHtml(t.group||'—')}</td>
-        <td>${escapeHtml(t.branch||'ทุกสาขา')}</td>
-        <td class="num">${targetText}${t.unit?' '+escapeHtml(t.unit):''}</td>
-        <td class="num">${actualText}${actual!==null&&t.unit?' '+escapeHtml(t.unit):''}</td>
-        <td class="num">${deltaText}</td>
-        <td class="num">${pctText}</td>
-        <td><span class="${statusClass}">${escapeHtml(status)}</span></td>
-        <td>${escapeHtml(dateText)}</td>
-      </tr>`;
-    }).join('')}</tbody>
-  </table>`;
-
-  container.innerHTML=html;
+  names.forEach(name => {
+    const items = groups.get(name);
+    const tr = document.createElement("tr");
+    [
+      name,
+      fmt(countUniqueOwnVehicles(items)),
+      fmt(items.length),
+      fmt(sum(items, "distance"), 2),
+      money(totalCost(items))
+    ].forEach((value, i) => {
+      const td = document.createElement("td");
+      td.textContent = value;
+      if (i > 0) td.className = "num";
+      tr.appendChild(td);
+    });
+    body.appendChild(tr);
+  });
 }
 
-function render(){
-  const rows=selectedRows();
+/*
+ * จับคู่ Target ด้วยคำสำคัญในชื่อรายการ/ประเภท/หน่วย
+ * ไม่จับคู่ Target ที่ระบุกลุ่มงาน เพราะ Combined_YTD ไม่มีคอลัมน์กลุ่มงาน
+ * ไม่เดาความหมายของ Target ที่ไม่ชัดเจน
+ */
+function matchTargetMetric(t) {
+  if (t.group) {
+    return {
+      key: null,
+      label: "ต้องมีข้อมูลกลุ่มงาน",
+      reason: "Target ระบุกลุ่มงาน แต่ข้อมูลจริงไม่มีคอลัมน์กลุ่มงาน"
+    };
+  }
 
-  const days=periodDays(
-    branchRows().filter(
-      r=>!$('periodFilter').value||
-         r.period===$('periodFilter').value
-    )
-  );
+  const description = norm([t.type, t.item, t.unit].join(" "));
+  const item = norm(t.item);
+  const unit = norm(t.unit);
 
-  updateHero(rows);
-  updateKpis(rows,days);
-  updateCharts(rows,days);
-  renderTable(rows);
-  renderTargets();
+  if (!item) {
+    return { key: null, label: "ไม่มีชื่อรายการ", reason: "Target ไม่มีชื่อรายการ" };
+  }
+
+  // รถ: นับทะเบียนรถไม่ซ้ำ
+  if (
+    /จำนวนรถ|รถทั้งหมด|รถที่ใช้|รถของเรา|จำนวนคัน|fleet|vehicle count/.test(description) ||
+    /คัน/.test(unit) && /รถ|fleet|vehicle/.test(description)
+  ) {
+    return { key: "vehicles", label: "จำนวนรถไม่ซ้ำ", reason: "" };
+  }
+
+  // เที่ยว: จำนวนรายการที่เป็นรถของเรา
+  if (/จำนวนเที่ยว|เที่ยวรถ|เที่ยววิ่ง|trip|trips/.test(description)) {
+    return { key: "trips", label: "จำนวนเที่ยว", reason: "" };
+  }
+
+  // ระยะทาง
+  if (/ระยะทาง|กิโลเมตร|กม\.|distance|kilometer|kilometre/.test(description)) {
+    return { key: "distance", label: "ระยะทางรวม", reason: "" };
+  }
+
+  // ค่าใช้จ่าย
+  if (/ค่าทางด่วน|toll/.test(description)) {
+    return { key: "toll", label: "ค่าทางด่วน", reason: "" };
+  }
+  if (/ค่าห้องพัก|ห้องพัก|hotel|lodging/.test(description)) {
+    return { key: "hotel", label: "ค่าห้องพัก", reason: "" };
+  }
+  if (/ค่าเดินทาง|travel expense|ค่าเดินทางรวม/.test(description)) {
+    return { key: "travel", label: "ค่าเดินทาง", reason: "" };
+  }
+  if (/ค่าใช้จ่ายรวม|ค่าใช้จ่ายทั้งหมด|total cost|total expense/.test(description)) {
+    return { key: "cost", label: "ค่าใช้จ่ายรวม", reason: "" };
+  }
+
+  return {
+    key: null,
+    label: "ไม่พบตัวชี้วัดที่ตรงกัน",
+    reason: "ยังไม่สามารถจับคู่ชื่อ Target กับข้อมูลจริงได้อย่างมั่นใจ"
+  };
 }
 
-/* =========================
-   LOAD GOOGLE SHEETS
-========================= */
+function actualForMetric(metric, rows) {
+  const fleet = ownFleetRows(rows);
 
-async function loadData(){
-  setStatus(true,'กำลังโหลดข้อมูล');
-
-  $('tableContainer').innerHTML=
-    '<div class="loading">กำลังโหลดข้อมูลจาก Google Sheets…</div>';
-
-  $('targetContainer').innerHTML=
-    '<div class="loading">กำลังโหลดข้อมูล Target…</div>';
-
-  try{
-    const [dataResult,targetResult]=await Promise.allSettled([
-      fetch(SHEET_CSV_URL,{cache:'no-store'}),
-      fetch(TARGET_CSV_URL,{cache:'no-store'})
-    ]);
-
-    // ชีตข้อมูลเดินรถเป็นข้อมูลหลัก
-    if(dataResult.status!=='fulfilled'){
-      throw dataResult.reason||new Error('ไม่สามารถเชื่อมต่อชีตข้อมูลเดินรถได้');
-    }
-
-    const res=dataResult.value;
-    if(!res.ok)throw new Error('โหลดชีตข้อมูลเดินรถไม่สำเร็จ: HTTP '+res.status);
-
-    const csv=await res.text();
-    const parsed=Papa.parse(csv,{header:true,skipEmptyLines:'greedy'});
-
-    allRows=parsed.data.map(normalizeRow).filter(r=>r.date);
-
-    if(!allRows.length){
-      throw new Error('ไม่พบข้อมูลวันที่ในชีต กรุณาตรวจสอบหัวคอลัมน์วันที่');
-    }
-
-    // โหลด Target แยกจากข้อมูลหลัก เพื่อไม่ให้ Target ที่มีปัญหาทำให้ Dashboard หลักล้มเหลว
-    if(targetResult.status==='fulfilled'&&targetResult.value.ok){
-      const targetCsv=await targetResult.value.text();
-      const targetParsed=Papa.parse(targetCsv,{
-        header:true,
-        skipEmptyLines:'greedy'
-      });
-
-      targetRows=targetParsed.data
-        .map(normalizeTarget)
-        .filter(t=>t.item||t.type);
-    }else{
-      targetRows=[];
-    }
-
-    buildPeriods();
-    render();
-
-    if(targetRows.length){
-      setStatus(true,'เชื่อมต่อข้อมูลแล้ว');
-    }else{
-      setStatus(true,'โหลดข้อมูลหลักแล้ว · ตรวจสอบ Target');
-      $('targetContainer').innerHTML=
-        '<div class="error">โหลดข้อมูลเดินรถสำเร็จ แต่โหลดชีต Target ไม่สำเร็จหรือไม่พบรายการ Target กรุณาตรวจสอบว่าได้เผยแพร่ชีต Target เป็น CSV และ URL ถูกต้อง</div>';
-    }
-
-  }catch(err){
-    console.error(err);
-    setStatus(false,'โหลดข้อมูลไม่สำเร็จ');
-
-    $('tableContainer').innerHTML=
-      `<div class="error">
-        ไม่สามารถโหลดข้อมูลจาก Google Sheets ได้<br>
-        <small>${escapeHtml(err.message||'โปรดลองใหม่ภายหลัง')}</small><br><br>
-        <button onclick="loadData()" style="border:0;border-radius:8px;background:#3267e3;color:white;padding:9px 16px;cursor:pointer">ลองโหลดอีกครั้ง</button>
-      </div>`;
-
-    $('targetContainer').innerHTML=
-      '<div class="empty">ยังไม่สามารถประเมิน Target ได้ เนื่องจากข้อมูลหลักโหลดไม่สำเร็จ</div>';
+  switch (metric) {
+    case "vehicles": return countUniqueOwnVehicles(fleet);
+    case "trips": return fleet.length;
+    case "distance": return sum(fleet, "distance");
+    case "toll": return sum(fleet, "toll");
+    case "hotel": return sum(fleet, "hotel");
+    case "travel": return sum(fleet, "travel");
+    case "cost": return totalCost(fleet);
+    default: return null;
   }
 }
 
-$('periodFilter').addEventListener('change',render);
-$('branchFilter').addEventListener('change',render);
+function targetRowsForCurrentView() {
+  const from = $("dateFrom").value;
+  const to = $("dateTo").value;
+  const branch = $("branch").value;
+
+  return allTargets.filter(t => {
+    if (!targetActiveInRange(t, from, to)) return false;
+    if (t.branch && branch && t.branch !== branch) return false;
+    return true;
+  });
+}
+
+function targetActualRows(t, selected) {
+  // Target ระบุสาขา: คำนวณ Actual เฉพาะสาขานั้น
+  if (t.branch) return selected.filter(r => r.branch === t.branch);
+
+  // Target ไม่ระบุสาขา: ใช้ข้อมูลตามตัวกรองหน้าจอ
+  return selected;
+}
+
+function statusForTarget(actual, target) {
+  if (!Number.isFinite(actual)) return { label: "จับคู่ไม่ได้", cls: "neutral" };
+  if (target === 0) {
+    return actual === 0
+      ? { label: "ตรงเป้า", cls: "good" }
+      : { label: "Target = 0", cls: "warn" };
+  }
+
+  const ratio = actual / target;
+  return ratio >= 1
+    ? { label: "ถึงเป้า", cls: "good" }
+    : { label: "ต่ำกว่าเป้า", cls: "bad" };
+}
+
+function renderTargets(selected) {
+  const targets = targetRowsForCurrentView();
+  const fleet = ownFleetRows(selected);
+  const summary = $("targetSummary");
+  const body = $("targetBody");
+
+  summary.replaceChildren();
+  body.replaceChildren();
+
+  if (targetLoadError) {
+    summary.innerHTML = '<div class="empty error">โหลด Target ไม่สำเร็จ: ' +
+      escapeHTML(targetLoadError) + '</div>';
+    body.innerHTML = '<tr><td colspan="8" class="empty">ไม่สามารถโหลด Target ได้</td></tr>';
+    return;
+  }
+
+  if (!targets.length) {
+    summary.innerHTML = '<div class="empty">ไม่มี Target ที่ใช้งานในช่วงวันที่นี้</div>';
+    body.innerHTML = '<tr><td colspan="8" class="empty">ไม่พบ Target ในช่วงที่เลือก</td></tr>';
+    return;
+  }
+
+  const results = targets.map(t => {
+    const metric = matchTargetMetric(t);
+    const actualRows = targetActualRows(t, selected);
+    const actual = metric.key ? actualForMetric(metric.key, actualRows) : null;
+    const pct = actual !== null && t.target !== 0 ? actual / t.target * 100 : null;
+    return { t, metric, actual, pct };
+  });
+
+  const comparable = results.filter(r => r.actual !== null);
+  const achieved = comparable.filter(r => r.t.target === 0
+    ? r.actual === 0
+    : r.actual >= r.t.target);
+
+  const info = document.createElement("div");
+  info.className = "target-item";
+  info.innerHTML =
+    '<div class="target-title">Target ที่จับคู่ได้</div>' +
+    '<div class="target-number">' + fmt(comparable.length) + ' / ' + fmt(results.length) + '</div>' +
+    '<div class="target-meta">ถึงเป้า ' + fmt(achieved.length) +
+    ' รายการ จาก ' + fmt(comparable.length) + ' รายการที่เปรียบเทียบได้</div>';
+  summary.appendChild(info);
+
+  const own = document.createElement("div");
+  own.className = "target-item";
+  own.innerHTML =
+    '<div class="target-title">รถของเราในช่วงที่เลือก</div>' +
+    '<div class="target-number">' + fmt(countUniqueOwnVehicles(fleet)) + ' คัน</div>' +
+    '<div class="target-meta">' + fmt(fleet.length) +
+    ' เที่ยว · ระยะทาง ' + fmt(sum(fleet, "distance"), 2) + '</div>';
+  summary.appendChild(own);
+
+  results.forEach(({t, metric, actual, pct}) => {
+    const tr = document.createElement("tr");
+
+    const cells = [
+      t.type || "—",
+      t.item || "—",
+      t.branch || "ทุกสาขา",
+      fmt(t.target, 2),
+      t.unit || "—",
+      actual === null ? "—" : fmt(actual, 2),
+      pct === null ? "—" : fmt(pct, 1) + "%",
+      ""
+    ];
+
+    cells.forEach((value, i) => {
+      const td = document.createElement("td");
+      if (i === 3 || i === 5 || i === 6) td.className = "num";
+
+      if (i === 7) {
+        const status = actual === null
+          ? {label: metric.label, cls: "warn"}
+          : statusForTarget(actual, t.target);
+        const pill = document.createElement("span");
+        pill.className = "pill " + status.cls;
+        pill.textContent = status.label;
+        td.appendChild(pill);
+
+        if (actual === null && metric.reason) {
+          const small = document.createElement("div");
+          small.className = "target-meta";
+          small.style.marginTop = "5px";
+          small.textContent = metric.reason;
+          td.appendChild(small);
+        }
+      } else {
+        td.textContent = value;
+      }
+      tr.appendChild(td);
+    });
+
+    body.appendChild(tr);
+  });
+}
+
+function escapeHTML(value) {
+  return String(value).replace(/[&<>"']/g, c => ({
+    "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
+  })[c]);
+}
+
+function render() {
+  const selected = selectedRows();
+  renderKPIs(selected);
+  renderBranches(selected);
+  renderTargets(selected);
+
+  const own = ownFleetRows(selected);
+  const blankType = selected.length - own.length;
+  $("dataInfo").textContent =
+    `ข้อมูลทั้งหมด ${fmt(selected.length)} รายการ · ` +
+    `รถของเรา ${fmt(own.length)} รายการ · ` +
+    `แถวที่ประเภทรถว่าง ไม่ถูกนับเป็นรถของเรา ${fmt(blankType)} รายการ`;
+
+  $("loadStatus").textContent =
+    `ข้อมูล ${fmt(allRows.length)} รายการ · Target ${fmt(allTargets.length)} รายการ`;
+}
+
+async function fetchCSV(url) {
+  const response = await fetch(url, { cache: "no-store" });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const csv = await response.text();
+  if (!csv.trim()) throw new Error("ไฟล์ CSV ว่าง");
+  return parseCSV(csv);
+}
+
+async function loadData() {
+  $("loadStatus").textContent = "กำลังโหลดข้อมูล...";
+  $("refreshBtn").disabled = true;
+  dataLoadError = "";
+  targetLoadError = "";
+
+  const [dataResult, targetResult] = await Promise.allSettled([
+    fetchCSV(DATA_URL),
+    fetchCSV(TARGET_URL)
+  ]);
+
+  if (dataResult.status === "fulfilled") {
+    allRows = dataResult.value.map(normalizeRow);
+  } else {
+    dataLoadError = dataResult.reason?.message || "ไม่ทราบสาเหตุ";
+    allRows = [];
+  }
+
+  if (targetResult.status === "fulfilled") {
+    allTargets = targetResult.value.map(normalizeTarget);
+  } else {
+    targetLoadError = targetResult.reason?.message || "ไม่ทราบสาเหตุ";
+    allTargets = [];
+  }
+
+  setupBranches();
+  setDefaultDates();
+  render();
+
+  if (dataLoadError) {
+    $("loadStatus").innerHTML =
+      '<span class="error">โหลดข้อมูลหลักไม่สำเร็จ: ' +
+      escapeHTML(dataLoadError) + '</span>';
+  } else if (targetLoadError) {
+    $("loadStatus").innerHTML =
+      '<span class="error">โหลดข้อมูลจริงแล้ว แต่โหลด Target ไม่สำเร็จ: ' +
+      escapeHTML(targetLoadError) + '</span>';
+  }
+
+  if (!allRows.length && !dataLoadError) {
+    $("loadStatus").textContent = "ไม่พบข้อมูลใน CSV";
+  }
+
+  $("refreshBtn").disabled = false;
+}
+
+$("applyBtn").addEventListener("click", render);
+$("refreshBtn").addEventListener("click", loadData);
+$("branch").addEventListener("change", render);
+$("dateFrom").addEventListener("change", render);
+$("dateTo").addEventListener("change", render);
 
 loadData();
 </script>

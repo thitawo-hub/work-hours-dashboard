@@ -66,101 +66,239 @@ footer{margin-top:20px;font-size:13px;color:#64748b}
 <script>
 const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSWLQuTDK81qBHrVGIrbfLMQd2SbGcmeVPqgnd5RNzIKEYFYgenm6kofz8bzaLI-wmSnY6oZE8759Vy/pub?output=csv";
 
+// ตำแหน่งคอลัมน์ใน Google Sheets (เริ่มนับจาก 0)
+const COL = {
+  driver: 2,  // C: ชื่อ พขร
+  start: 11,  // L: เวลาเริ่มที่เลือก
+  end: 12,    // M: เวลาจบที่เลือก
+  branch: 17  // R: สาขา
+};
+
 let records = [];
 let restRows = [];
 
 function parseCSV(text) {
   const rows = [];
   let row = [], cell = "", quoted = false;
+
+  // ตัด BOM ที่อาจติดมากับไฟล์ CSV
+  text = text.replace(/^\uFEFF/, "");
+
   for (let i = 0; i < text.length; i++) {
     const c = text[i], next = text[i + 1];
-    if (c === '"' && quoted && next === '"') { cell += '"'; i++; }
-    else if (c === '"') quoted = !quoted;
-    else if (c === ',' && !quoted) { row.push(cell); cell = ""; }
-    else if ((c === '\n' || c === '\r') && !quoted) {
+
+    if (c === '"' && quoted && next === '"') {
+      cell += '"';
+      i++;
+    } else if (c === '"') {
+      quoted = !quoted;
+    } else if (c === ',' && !quoted) {
+      row.push(cell.trim());
+      cell = "";
+    } else if ((c === '\n' || c === '\r') && !quoted) {
       if (c === '\r' && next === '\n') i++;
-      row.push(cell);
-      if (row.some(v => v.trim() !== "")) rows.push(row);
-      row = []; cell = "";
-    } else cell += c;
+      row.push(cell.trim());
+      if (row.some(v => v !== "")) rows.push(row);
+      row = [];
+      cell = "";
+    } else {
+      cell += c;
+    }
   }
-  row.push(cell);
-  if (row.some(v => v.trim() !== "")) rows.push(row);
+
+  row.push(cell.trim());
+  if (row.some(v => v !== "")) rows.push(row);
   return rows;
 }
 
 function parseDate(value) {
-  if (!value) return null;
-  let s = String(value).trim().replace(/^"|"$/g, "");
-  // รูปแบบวันที่และเวลาที่พบบ่อยใน Google Sheets
-  let m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[ ,T]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+  if (value == null || String(value).trim() === "") return null;
+
+  const s = String(value).trim().replace(/^"|"$/g, "");
+
+  // รูปแบบ d/M/yyyy, HH:mm:ss หรือ d/M/yyyy HH:mm:ss
+  // ใช้วัน/เดือน/ปีให้ตรงกับรูปแบบในชีต
+  let m = s.match(
+    /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[ ,T]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/
+  );
+
   if (m) {
-    let a = +m[1], b = +m[2], year = +m[3];
-    // รองรับปี พ.ศ.
+    let day = Number(m[1]);
+    let month = Number(m[2]);
+    let year = Number(m[3]);
+
     if (year > 2400) year -= 543;
-    // ถ้าส่วนแรกเกิน 12 ถือว่าเป็นวัน/เดือน/ปี
-    let day, month;
-    if (a > 12) { day = a; month = b; }
-    else if (b > 12) { month = a; day = b; }
-    else { day = a; month = b; }
-    return new Date(year, month - 1, day, +(m[4] || 0), +(m[5] || 0), +(m[6] || 0));
+
+    // ป้องกันวันที่หรือเดือนผิดช่วง
+    if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+
+    const d = new Date(
+      year, month - 1, day,
+      Number(m[4] || 0),
+      Number(m[5] || 0),
+      Number(m[6] || 0)
+    );
+
+    if (
+      d.getFullYear() !== year ||
+      d.getMonth() !== month - 1 ||
+      d.getDate() !== day
+    ) return null;
+
+    return d;
   }
-  // รูปแบบ YYYY-MM-DD หรือ ISO
-  m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+
+  // รูปแบบ yyyy-MM-dd HH:mm:ss
+  m = s.match(
+    /^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/
+  );
+
   if (m) {
-    let year = +m[1]; if (year > 2400) year -= 543;
-    return new Date(year, +m[2]-1, +m[3], +(m[4]||0), +(m[5]||0), +(m[6]||0));
+    let year = Number(m[1]);
+    if (year > 2400) year -= 543;
+
+    const d = new Date(
+      year, Number(m[2]) - 1, Number(m[3]),
+      Number(m[4] || 0),
+      Number(m[5] || 0),
+      Number(m[6] || 0)
+    );
+
+    return Number.isNaN(d.getTime()) ? null : d;
   }
+
+  // รองรับวันที่แบบตัวเลข serial ของ Google Sheets
+  if (/^\d+(\.\d+)?$/.test(s)) {
+    const serial = Number(s);
+    if (serial > 20000 && serial < 100000) {
+      return new Date(Date.UTC(1899, 11, 30) + serial * 86400000);
+    }
+  }
+
   const d = new Date(s);
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
 function loadData() {
-  const url = CSV_URL + "&_=" + Date.now();
-  document.getElementById("message").textContent = "กำลังโหลดข้อมูล...";
-  fetch(url)
-    .then(r => {
-      if (!r.ok) throw new Error("โหลดข้อมูลไม่สำเร็จ");
-      return r.text();
-    })
-    .then(text => {
-      const data = parseCSV(text);
-      if (data.length < 2) throw new Error("ไม่พบข้อมูลใน CSV");
-      records = data.slice(1).map((r, index) => ({
-        driver: (r[4] || "").trim(),
-        startRaw: (r[13] || "").trim(),
-        endRaw: (r[14] || "").trim(),
-        branch: (r[17] || "").trim(),
-        index
-      })).filter(r => r.driver && r.startRaw && r.endRaw)
-        .map(r => ({...r, start: parseDate(r.startRaw), end: parseDate(r.endRaw)}))
-        .filter(r => r.start && r.end && r.end >= r.start);
+  const message = document.getElementById("message");
+  message.textContent = "กำลังโหลดข้อมูล...";
 
-      records.sort((a,b) => a.driver.localeCompare(b.driver, "th") || a.start - b.start);
+  fetch(CSV_URL + "&_=" + Date.now())
+    .then(response => {
+      if (!response.ok) {
+        throw new Error("HTTP " + response.status);
+      }
+      return response.text();
+    })
+    .then(csvText => {
+      // ตรวจว่าได้ CSV จริง ไม่ใช่หน้า HTML แจ้งข้อผิดพลาด
+      if (
+        /<html[\s>]/i.test(csvText.slice(0, 1000)) ||
+        /google sign in/i.test(csvText.slice(0, 3000))
+      ) {
+        throw new Error("ลิงก์ไม่ได้ส่งข้อมูล CSV กลับมา กรุณาตรวจสอบการเผยแพร่ชีต");
+      }
+
+      const data = parseCSV(csvText);
+
+      if (data.length < 2) {
+        throw new Error("CSV มีข้อมูลน้อยกว่า 2 แถว");
+      }
+
+      // แสดงจำนวนแถวและจำนวนคอลัมน์เพื่อช่วยตรวจสอบ
+      const maxColumns = Math.max(...data.map(r => r.length));
+
+      if (maxColumns <= COL.branch) {
+        throw new Error(
+          "CSV มีเพียง " + maxColumns +
+          " คอลัมน์ แต่โค้ดต้องอ่านถึงคอลัมน์ R (18 คอลัมน์)"
+        );
+      }
+
+      const newRecords = [];
+      let missingFields = 0;
+      let invalidDates = 0;
+
+      // ข้ามแถวหัวตาราง
+      data.slice(1).forEach((r, index) => {
+        const driver = (r[COL.driver] || "").trim();
+        const startRaw = (r[COL.start] || "").trim();
+        const endRaw = (r[COL.end] || "").trim();
+        const branch = (r[COL.branch] || "").trim();
+
+        // ข้ามแถวที่ไม่มีชื่อ หรือเวลาเริ่ม/จบไม่ครบ
+        if (!driver || !startRaw || !endRaw) {
+          missingFields++;
+          return;
+        }
+
+        const start = parseDate(startRaw);
+        const end = parseDate(endRaw);
+
+        if (!start || !end) {
+          invalidDates++;
+          return;
+        }
+
+        if (end < start) {
+          invalidDates++;
+          return;
+        }
+
+        newRecords.push({
+          driver,
+          startRaw,
+          endRaw,
+          start,
+          end,
+          branch,
+          index
+        });
+      });
+
+      records = newRecords;
+
+      // เรียงตามชื่อพนักงาน แล้วเรียงเวลาเริ่มจากเก่าไปใหม่
+      records.sort((a, b) =>
+        a.driver.localeCompare(b.driver, "th") ||
+        a.start - b.start
+      );
+
       restRows = [];
+
       for (let i = 0; i < records.length - 1; i++) {
-        const current = records[i], next = records[i+1];
+        const current = records[i];
+        const next = records[i + 1];
+
         if (current.driver !== next.driver) continue;
+
         const ms = next.start - current.end;
+
+        // ไม่นับกรณีเวลางานซ้อนทับกัน
         if (ms < 0) continue;
+
         restRows.push({
           driver: current.driver,
           branch: next.branch || current.branch,
           previousEnd: current.end,
           nextStart: next.start,
           ms,
-          status: ms >= 10*60*60*1000 ? "ผ่าน" : "ไม่ผ่าน"
+          status: ms >= 10 * 60 * 60 * 1000 ? "ผ่าน" : "ไม่ผ่าน"
         });
       }
+
       updateBranches();
       render();
-      document.getElementById("message").textContent =
-        `โหลดสำเร็จ ${records.length} รายการงาน · ${new Date().toLocaleTimeString("th-TH")}`;
+
+      message.textContent =
+        "โหลดข้อมูลสำเร็จ: " + records.length +
+        " รายการงาน | " + restRows.length +
+        " รอบพัก | ข้ามแถวข้อมูลไม่ครบ " + missingFields +
+        " แถว | วันที่ไม่ถูกต้อง " + invalidDates + " แถว";
     })
     .catch(err => {
-      document.getElementById("message").textContent =
-        "โหลดข้อมูลไม่สำเร็จ กรุณาตรวจสอบว่า Google Sheets เผยแพร่เป็น CSV แล้ว และลิงก์เปิดได้โดยไม่ต้องลงชื่อเข้าใช้";
-      console.error(err);
+      console.error("Dashboard error:", err);
+      message.textContent = "เกิดข้อผิดพลาด: " + err.message;
     });
 }
 
@@ -168,59 +306,92 @@ function duration(ms) {
   const mins = Math.floor(ms / 60000);
   return Math.floor(mins / 60) + " ชม. " + (mins % 60) + " นาที";
 }
+
 function dateText(d) {
   return d.toLocaleString("th-TH", {
-    year:"numeric", month:"2-digit", day:"2-digit",
-    hour:"2-digit", minute:"2-digit", hour12:false
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
   });
 }
+
 function updateBranches() {
   const select = document.getElementById("branch");
   const old = select.value;
-  const branches = [...new Set(restRows.map(r => r.branch).filter(Boolean))].sort();
+
+  const branches = [
+    ...new Set(restRows.map(r => r.branch).filter(Boolean))
+  ].sort((a, b) => a.localeCompare(b, "th"));
+
   select.innerHTML = '<option value="all">ทุกสาขา</option>';
-  branches.forEach(b => {
+
+  branches.forEach(branch => {
     const opt = document.createElement("option");
-    opt.value = b; opt.textContent = b; select.appendChild(opt);
+    opt.value = branch;
+    opt.textContent = branch;
+    select.appendChild(opt);
   });
+
   select.value = branches.includes(old) ? old : "all";
 }
+
 function render() {
   const search = document.getElementById("search").value.trim().toLowerCase();
   const status = document.getElementById("status").value;
   const branch = document.getElementById("branch").value;
+
   const drivers = new Set(records.map(r => r.driver));
+
   document.getElementById("drivers").textContent = drivers.size;
-  document.getElementById("passed").textContent = restRows.filter(r => r.status === "ผ่าน").length;
-  document.getElementById("failed").textContent = restRows.filter(r => r.status === "ไม่ผ่าน").length;
+  document.getElementById("passed").textContent =
+    restRows.filter(r => r.status === "ผ่าน").length;
+  document.getElementById("failed").textContent =
+    restRows.filter(r => r.status === "ไม่ผ่าน").length;
+
   const total = restRows.length;
+  const passed = restRows.filter(r => r.status === "ผ่าน").length;
+
   document.getElementById("rate").textContent =
-    (total ? Math.round(restRows.filter(r => r.status === "ผ่าน").length / total * 100) : 0) + "%";
+    (total ? Math.round(passed / total * 100) : 0) + "%";
 
   const filtered = restRows.filter(r =>
     r.driver.toLowerCase().includes(search) &&
     (status === "all" || r.status === status) &&
     (branch === "all" || r.branch === branch)
   );
-  document.getElementById("rows").innerHTML = filtered.map(r => `
-    <tr>
-      <td>${escapeHTML(r.driver)}</td>
-      <td>${escapeHTML(r.branch || "-")}</td>
-      <td>${dateText(r.previousEnd)}</td>
-      <td>${dateText(r.nextStart)}</td>
-      <td>${duration(r.ms)}</td>
-      <td class="${r.status === "ผ่าน" ? "pass" : "fail"}">${r.status}</td>
-    </tr>`).join("") || '<tr><td colspan="6">ไม่พบข้อมูลที่ตรงกับเงื่อนไข</td></tr>';
+
+  document.getElementById("rows").innerHTML =
+    filtered.map(r => `
+      <tr>
+        <td>${escapeHTML(r.driver)}</td>
+        <td>${escapeHTML(r.branch || "-")}</td>
+        <td>${dateText(r.previousEnd)}</td>
+        <td>${dateText(r.nextStart)}</td>
+        <td>${duration(r.ms)}</td>
+        <td class="${r.status === "ผ่าน" ? "pass" : "fail"}">${r.status}</td>
+      </tr>
+    `).join("") ||
+    '<tr><td colspan="6">ไม่พบข้อมูลที่ตรงกับเงื่อนไข</td></tr>';
 }
+
 function escapeHTML(s) {
   return String(s).replace(/[&<>"']/g, c => ({
-    "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
   })[c]);
 }
+
 document.getElementById("reload").addEventListener("click", loadData);
 document.getElementById("search").addEventListener("input", render);
 document.getElementById("status").addEventListener("change", render);
 document.getElementById("branch").addEventListener("change", render);
+
 loadData();
 </script>
 </body>

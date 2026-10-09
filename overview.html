@@ -49,7 +49,7 @@ th:first-child,td:first-child,td.l,th.l{text-align:left}
 </div>
 <div class="box"><h2>ระยะทางวิ่งงานประจำวัน : กิโลเมตร (เส้นประ = Target/วัน)</h2><svg id="chart"></svg></div>
 <div class="grid">
-<div class="box"><h2>อัตรากำลังคนและรถขนส่ง เทียบ Target</h2><div class="wrap"><table id="tCrew"></table></div>
+<div class="box"><h2>อัตรากำลังคนและรถขนส่ง เทียบ Target</h2><div class="wrap"><table id="tCrew"></table></div><div id="crewNote" style="font-size:12px;color:var(--mut);margin-top:8px"></div>
 <h2 style="margin-top:18px">ระยะทางรายคนขับ</h2><div class="wrap"><table id="tDrv"></table></div></div>
 <div class="box"><h2>ประมาณการระยะทางรายคันเทียบเป้า : กิโลเมตร</h2><div class="wrap"><table id="tCar"></table></div></div>
 </div>
@@ -63,7 +63,10 @@ th:first-child,td:first-child,td.l,th.l{text-align:left}
 const DATA_URL="https://docs.google.com/spreadsheets/d/e/2PACX-1vSWLQuTDK81qBHrVGIrbfLMQd2SbGcmeVPqgnd5RNzIKEYFYgenm6kofz8bzaLI-wmSnY6oZE8759Vy/pub?gid=1490125939&single=true&output=csv";
 const TARGET_URL="https://docs.google.com/spreadsheets/d/e/2PACX-1vSWLQuTDK81qBHrVGIrbfLMQd2SbGcmeVPqgnd5RNzIKEYFYgenm6kofz8bzaLI-wmSnY6oZE8759Vy/pub?gid=1776706184&single=true&output=csv";
 const MAX_TRIP_KM=3000; // ระยะทางต่อแถวที่เกินนี้ถือว่าผิดปกติ ไม่นำมารวม
-let rows=[],targets=[],bad=0;
+// ใส่ gid ของแท็บ Master car / Master driver (ดูจาก URL ตอนเปิดแท็บ: ...#gid=ตัวเลข)
+const MASTER_CAR_GID="", MASTER_DRIVER_GID="";
+const SHEET_BASE=DATA_URL.split("gid=")[0];
+let rows=[],targets=[],bad=0,MC=[],MD=[];
 const $=id=>document.getElementById(id),tx=v=>String(v??"").trim();
 const num=v=>{const n=Number(tx(v).replace(/[,฿\s]/g,""));return isFinite(n)?n:0};
 const fmt=(v,d=0)=>Number(v||0).toLocaleString("th-TH",{maximumFractionDigits:d});
@@ -121,15 +124,16 @@ if(e.length<=31||i%3==0)s+=`<text x="${x+bw*.35}" y="${H-8}" font-size="10" text
 if(tline){const y=H-pb-tline/mx*(H-pb-18);s+=`<line x1="0" x2="${W}" y1="${y}" y2="${y}" stroke="#ea580c" stroke-width="2" stroke-dasharray="6 4"/><text x="${W-2}" y="${y-4}" font-size="10" fill="#ea580c" text-anchor="end">Target ${fmt(tline,1)}</text>`}
 if(!e.length)s='<text x="10" y="30" font-size="12">ไม่มีข้อมูล LOCO ในช่วงนี้</text>';
 $(id).setAttribute("viewBox",`0 0 ${W} ${H}`);$(id).innerHTML=s}
+const mCars=b=>uniq(MC.filter(x=>!b||x.branch===b).map(x=>x.plate));
+const mDrv=b=>{const to=$("to").value;return uniq(MD.filter(x=>(!b||x.branch===b)&&!(x.leave&&to&&dk(x.leave)<=to)).map(x=>x.name))};
 function crew(R,b){let h='<tr><th class="l">รายการ</th><th>จริง</th><th>Target</th><th>Diff</th></tr>';
-["COCO","LOCO"].forEach(g=>{const G=R.filter(r=>r.group===g),c=uniq(G.map(r=>r.plate)),
-p=uniq(G.flatMap(r=>[r.driver,r.driver2])),tp=tgt("PERSON",g,b),tc=tgt("CAR",g,b);
+["COCO","LOCO"].forEach(g=>{const G=R.filter(r=>r.group===g);let c=uniq(G.map(r=>r.plate)),p=uniq(G.flatMap(r=>[r.driver,r.driver2]));if(g==="COCO"){if(MC.length)c=mCars(b);if(MD.length)p=mDrv(b)}const tp=tgt("PERSON",g,b),tc=tgt("CAR",g,b);
 h+=`<tr><td class="l">พขร. ${g}</td><td>${fmt(p)} คน</td>${cmp(p,tp)}</tr>`;
 h+=`<tr><td class="l">จำนวนรถ ${g}</td><td>${fmt(c)} คัน</td>${cmp(c,tc)}</tr>`;
 const ra=c?p/c:0,tr=tp!=null&&tc?tp/tc:null;
 h+=`<tr><td class="l">Driver Ratio ${g}</td><td>${c?fmt(ra,3):"No data"}</td>${tr==null?"<td>No data</td><td>-</td>":`<td>${fmt(tr,3)}</td><td class="${ra>=tr?"good":"bad"}">${fmt(ra-tr,3)}</td>`}</tr>`;
 if(g==="COCO"&&tr!=null&&c)h+=`<tr><td class="l">ต้องหา พขร. COCO เพิ่ม</td><td colspan="3" class="${p>=tr*c?"good":"bad"}">${fmt(Math.max(0,Math.ceil(tr*c-p)))} คน</td></tr>`});
-$("tCrew").innerHTML=h}
+$("tCrew").innerHTML=h;$("crewNote").textContent=(MC.length&&MD.length?"COCO: นับจาก Master driver (ไม่รวมคนที่ลาออกแล้ว) และ Master car · ":"COCO: ยังนับจากข้อมูลวิ่งงาน (ยังไม่ได้ตั้งค่า Master) · ")+"LOCO: นับจากข้อมูลวิ่งงาน (ไม่ซ้ำ)"}
 function carTable(R,days,dim,b){const m=new Map();R.forEach(r=>{if(!r.plate)return;const o=m.get(r.plate)||{p:r.plate,b:r.branch,g:r.group,km:0,n:0};o.km+=r.km;o.n++;m.set(r.plate,o)});
 const L=[...m.values()].map(o=>{const t=o.g==="COCO"?tgt("KM","COCO",o.b):null;return{...o,avg:o.km/days,pr:o.km/days*dim,t}}).sort((a,b)=>b.pr-a.pr);
 $("tCar").innerHTML='<tr><th class="l">ทะเบียน</th><th class="l">สาขา</th><th class="l">กลุ่ม</th><th>เที่ยว</th><th>ยอดสะสม</th><th>เฉลี่ย/วัน</th><th>เป้า/คัน</th><th>ประมาณการสิ้นเดือน</th><th>% ของเป้า</th></tr>'+
@@ -140,7 +144,10 @@ $("tDrv").innerHTML='<tr><th class="l">พนักงานขับรถ</th>
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 async function get(u){const r=await fetch(u,{cache:"no-store"});if(!r.ok)throw new Error("HTTP "+r.status);return csv(await r.text())}
 async function load(){$("status").textContent="กำลังโหลด...";
-try{const [d,t]=await Promise.all([get(DATA_URL),get(TARGET_URL)]);
+try{const opt=g=>g?get(SHEET_BASE+"gid="+g+"&single=true&output=csv").catch(()=>[]):Promise.resolve([]);
+const [d,t,mc,md]=await Promise.all([get(DATA_URL),get(TARGET_URL),opt(MASTER_CAR_GID),opt(MASTER_DRIVER_GID)]);
+MC=mc.map(r=>({branch:tx(r["สาขา"]),plate:tx(r["ทะเบียน"])||tx(r["เบอร์รถ"]),type:tx(r["ประเภทรถ"])})).filter(x=>x.plate);
+MD=md.map(r=>({branch:tx(r["สาขา"]),name:tx(r["ชื่อ พขร."]),pos:tx(r["ตำแหน่ง"]),leave:pdate(r["วันที่ลาออก"])})).filter(x=>x.name);
 const all=d.map(norm);bad=all.filter(r=>r.km<0||r.km>MAX_TRIP_KM).length;rows=all.filter(r=>r.km>=0&&r.km<=MAX_TRIP_KM);
 targets=t.map(normT);
 const sb=$("branch"),pv=sb.value;sb.innerHTML='<option value="">ทุกสาขา</option>'+[...new Set(rows.map(r=>r.branch))].sort().map(x=>`<option>${esc(x)}</option>`).join("");sb.value=pv;

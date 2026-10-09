@@ -27,7 +27,7 @@ th:first-child,td:first-child,td.l,th.l{text-align:left}tr:hover td{background:#
 </style></head><body>
 <header><h1>Linde Fleet Dashboard</h1>
 <select id="branch"><option value="">ทุกสาขา</option></select>
-<input type="date" id="from"><input type="date" id="to"><button id="reload">รีเฟรช</button></header>
+<select id="cycle" title="รอบข้อมูล 26-25"></select><input type="date" id="from"><input type="date" id="to"><button id="reload">รีเฟรช</button></header>
 <div class="page">
 <div id="status" class="warn">กำลังโหลด...</div>
 <div class="cards">
@@ -80,17 +80,19 @@ const t=L.find(t=>t.branch===branch);return t?t.val:null}
 const bs=[...new Set(rows.map(r=>r.branch))];let s=0,ok=false;bs.forEach(b=>{const v=tgt(type,group,b);if(v!=null){s+=v;ok=true}});return ok?s:null}
 function sel(){const f=$("from").value,t=$("to").value,b=$("branch").value;
 return rows.filter(r=>r.k&&(!f||r.k>=f)&&(!t||r.k<=t)&&(!b||r.branch===b))}
+function cycleOf(d){const st=d.getDate()>=26?new Date(d.getFullYear(),d.getMonth(),26):new Date(d.getFullYear(),d.getMonth()-1,26);return[st,new Date(st.getFullYear(),st.getMonth()+1,25)]}
+const dm=d=>d.toLocaleDateString("th-TH",{day:"numeric",month:"short"});
 const uniq=a=>new Set(a.filter(Boolean)).size;
 function render(){const R=sel(),b=$("branch").value;
 const f=$("from").value,t=$("to").value;if(!R.length){$("status").textContent="ไม่พบข้อมูลในช่วงที่เลือก";return}
 const ds=R.map(r=>r.k).sort(),first=pdate(f||ds[0]),last=pdate(ds[ds.length-1]);
-const days=Math.max(1,Math.round((last-first)/864e5)+1),dim=new Date(last.getFullYear(),last.getMonth()+1,0).getDate();
+const days=Math.max(1,Math.round((last-first)/864e5)+1),cyc=cycleOf(last),dim=Math.round((cyc[1]-cyc[0])/864e5)+1;
 const cars=uniq(R.map(r=>r.plate)),km=R.reduce((a,r)=>a+r.km,0);
 const proj=km/days*dim;
 const kmT=(()=>{const bs=b?[b]:[...new Set(R.map(r=>r.branch))];let s=0;bs.forEach(x=>{const c=uniq(R.filter(r=>r.branch===x&&r.group==="COCO").map(r=>r.plate));s+=(tgt("KM","COCO",x)||0)*c});return s})();
 $("kKm").textContent=fmt(km);$("kProj").textContent=fmt(proj);$("kTgt").textContent=kmT?fmt(kmT):"No data";
 $("kDay").textContent=fmt(km/days);$("kCar").textContent=fmt(cars?km/cars:0);$("kTrip").textContent=fmt(R.length);
-$("status").textContent=`ข้อมูล ${fmt(R.length)} เที่ยว · ${fmt(days)} วัน`+(bad?` · ไม่นำมารวม ${bad} แถวที่ระยะทางผิดปกติ (>${MAX_TRIP_KM} กม. หรือติดลบ)`:"");
+$("status").textContent=`รอบ ${dm(cyc[0])} – ${dm(cyc[1])} ${cyc[1].getFullYear()+543} · ข้อมูล ${fmt(R.length)} เที่ยว · ${fmt(days)} วัน`+(bad?` · ไม่นำมารวม ${bad} แถวที่ระยะทางผิดปกติ (>${MAX_TRIP_KM} กม. หรือติดลบ)`:"");
 chart(R,kmT/dim);dailyBars("cLocoCar",R,"LOCO",r=>[r.plate],tgt("CAR","LOCO",b));dailyBars("cLocoPer",R,"LOCO",r=>[r.driver,r.driver2],tgt("PERSON","LOCO",b));crew(R,b);carTable(R,days,dim,b);drvTable(R)}
 function chart(R,tline){const m=new Map();R.forEach(r=>m.set(r.k,(m.get(r.k)||0)+r.km));
 const e=[...m].sort((a,b)=>a[0]<b[0]?-1:1),W=1000,H=240,pl=50,pb=26,mx=Math.max(1,tline,...e.map(x=>x[1])),bw=(W-pl)/e.length;
@@ -133,7 +135,10 @@ try{const [d,t]=await Promise.all([get(DATA_URL),get(TARGET_URL)]);
 const all=d.map(norm);bad=all.filter(r=>r.km<0||r.km>MAX_TRIP_KM).length;rows=all.filter(r=>r.km>=0&&r.km<=MAX_TRIP_KM);
 targets=t.map(normT);
 const sb=$("branch"),pv=sb.value;sb.innerHTML='<option value="">ทุกสาขา</option>'+[...new Set(rows.map(r=>r.branch))].sort().map(x=>`<option>${esc(x)}</option>`).join("");sb.value=pv;
-if(!$("from").value){const ks=rows.map(r=>r.k).filter(Boolean).sort(),mx=ks[ks.length-1];if(mx){$("from").value=mx.slice(0,8)+"01";$("to").value=mx}}
+const cs=new Map();rows.forEach(r=>{if(r.date){const c=cycleOf(r.date);cs.set(dk(c[0]),c)}});
+const cl=[...cs].sort((a,b)=>a[0]<b[0]?1:-1),cy=$("cycle");
+cy.innerHTML=cl.map(([k,c])=>`<option value="${k}|${dk(c[1])}">รอบ ${dm(c[0])} – ${dm(c[1])} ${c[1].getFullYear()+543}</option>`).join("");
+if(!$("from").value&&cl.length){cy.selectedIndex=0;const[a,b]=cy.value.split("|");$("from").value=a;$("to").value=b}
 render()}catch(e){$("status").textContent="โหลดข้อมูลไม่สำเร็จ: "+e.message}}
-["branch","from","to"].forEach(i=>$(i).addEventListener("change",render));$("reload").addEventListener("click",load);load();
+$("cycle").addEventListener("change",()=>{const[a,b]=$("cycle").value.split("|");$("from").value=a;$("to").value=b;render()});["branch","from","to"].forEach(i=>$(i).addEventListener("change",render));$("reload").addEventListener("click",load);load();
 </script></body></html>

@@ -1,0 +1,754 @@
+
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Executive Dashboard | Fleet Overview</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    :root {
+      --navy: #142b4a;
+      --blue: #2563eb;
+      --bg: #f3f6fb;
+      --muted: #64748b;
+      --border: #e2e8f0;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, sans-serif;
+      background: var(--bg);
+      color: #172033;
+    }
+
+    header {
+      background: linear-gradient(120deg, #142b4a, #2457a7);
+      color: white;
+      padding: 26px 30px;
+    }
+
+    header h1 { margin: 0 0 8px; font-size: 27px; }
+    header p { margin: 0; color: #dbeafe; }
+
+    main {
+      max-width: 1500px;
+      margin: auto;
+      padding: 24px;
+    }
+
+    .toolbar, .panel, .kpi {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: 0 3px 12px #142b4a08;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 16px;
+      margin-bottom: 20px;
+      align-items: end;
+    }
+
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    label { font-size: 12px; color: var(--muted); font-weight: 600; }
+
+    select, input {
+      padding: 10px 12px;
+      min-width: 140px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      background: white;
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      border-radius: 8px;
+      padding: 11px 16px;
+      background: var(--blue);
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .kpi { padding: 19px; min-width: 0; }
+    .kpi .label { font-size: 13px; color: var(--muted); }
+    .kpi .value { font-size: 27px; font-weight: 750; margin: 12px 0 5px; overflow-wrap: anywhere; }
+    .kpi .note { color: var(--muted); font-size: 12px; }
+
+    .charts {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+      margin-bottom: 20px;
+    }
+
+    .panel { padding: 20px; min-width: 0; }
+    .panel h2 { font-size: 16px; margin: 0 0 16px; }
+    .chart-wrap { height: 300px; position: relative; }
+
+    .table-panel { padding: 20px; }
+    .table-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .table-top h2 { margin: 0; font-size: 16px; }
+    .table-scroll { overflow: auto; max-height: 520px; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      white-space: nowrap;
+      font-size: 13px;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 11px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      background: #f8fafc;
+      color: #475569;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    .status { font-size: 13px; color: var(--muted); margin: 12px 0; }
+    .error { color: #b91c1c; }
+    .footer { color: var(--muted); font-size: 12px; padding: 20px 0; }
+
+    @media (max-width: 950px) {
+      .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .charts { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 520px) {
+      header { padding: 22px 18px; }
+      header h1 { font-size: 22px; }
+      main { padding: 14px; }
+      .kpis { gap: 10px; }
+      .kpi { padding: 14px; }
+      .kpi .value { font-size: 21px; }
+      .chart-wrap { height: 260px; }
+    }
+  </style>
+</head>
+
+<body>
+<header>
+  <h1>Executive Dashboard</h1>
+  <p>ภาพรวมการเดินรถ ระยะทาง และค่าใช้จ่ายสะสมรายปี (YTD)</p>
+</header>
+
+<main>
+  <section class="toolbar">
+    <div class="field">
+      <label for="yearFilter">ปี</label>
+      <select id="yearFilter"><option value="all">ทุกปี</option></select>
+    </div>
+
+    <div class="field">
+      <label for="monthFilter">เดือน</label>
+      <select id="monthFilter">
+        <option value="all">ทุกเดือน</option>
+        <option value="1">มกราคม</option>
+        <option value="2">กุมภาพันธ์</option>
+        <option value="3">มีนาคม</option>
+        <option value="4">เมษายน</option>
+        <option value="5">พฤษภาคม</option>
+        <option value="6">มิถุนายน</option>
+        <option value="7">กรกฎาคม</option>
+        <option value="8">สิงหาคม</option>
+        <option value="9">กันยายน</option>
+        <option value="10">ตุลาคม</option>
+        <option value="11">พฤศจิกายน</option>
+        <option value="12">ธันวาคม</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="branchFilter">สาขา</label>
+      <select id="branchFilter"><option value="all">ทุกสาขา</option></select>
+    </div>
+
+    <button id="resetBtn">ล้างตัวกรอง</button>
+  </section>
+
+  <div id="status" class="status">กำลังโหลดข้อมูลจาก Google Sheets...</div>
+
+  <section class="kpis">
+    <article class="kpi">
+      <div class="label">จำนวนเที่ยวรถ</div>
+      <div class="value" id="kpiTrips">—</div>
+      <div class="note">จำนวนรายการตามตัวกรอง</div>
+    </article>
+    <article class="kpi">
+      <div class="label">ระยะทางรวม</div>
+      <div class="value" id="kpiDistance">—</div>
+      <div class="note">กิโลเมตร</div>
+    </article>
+    <article class="kpi">
+      <div class="label">ค่าใช้จ่ายรวม</div>
+      <div class="value" id="kpiCost">—</div>
+      <div class="note">ค่าทางด่วน + ค่าห้องพัก + ค่าเดินทาง</div>
+    </article>
+    <article class="kpi">
+      <div class="label">ค่าใช้จ่ายเฉลี่ยต่อเที่ยว</div>
+      <div class="value" id="kpiAvg">—</div>
+      <div class="note">บาทต่อเที่ยว</div>
+    </article>
+    <article class="kpi">
+      <div class="label">ค่าทางด่วน</div>
+      <div class="value" id="kpiToll">—</div>
+      <div class="note">บาท</div>
+    </article>
+    <article class="kpi">
+      <div class="label">ค่าห้องพัก</div>
+      <div class="value" id="kpiHotel">—</div>
+      <div class="note">บาท</div>
+    </article>
+    <article class="kpi">
+      <div class="label">ค่าเดินทาง</div>
+      <div class="value" id="kpiTravel">—</div>
+      <div class="note">บาท</div>
+    </article>
+    <article class="kpi">
+      <div class="label">ระยะทางเฉลี่ยต่อเที่ยว</div>
+      <div class="value" id="kpiAvgDistance">—</div>
+      <div class="note">กิโลเมตรต่อเที่ยว</div>
+    </article>
+  </section>
+
+  <section class="charts">
+    <article class="panel">
+      <h2>แนวโน้มจำนวนเที่ยวและระยะทางรายเดือน</h2>
+      <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
+    </article>
+
+    <article class="panel">
+      <h2>ค่าใช้จ่ายรายเดือน</h2>
+      <div class="chart-wrap"><canvas id="costChart"></canvas></div>
+    </article>
+
+    <article class="panel">
+      <h2>สัดส่วนค่าใช้จ่าย</h2>
+      <div class="chart-wrap"><canvas id="costShareChart"></canvas></div>
+    </article>
+
+    <article class="panel">
+      <h2>ระยะทางรวมแยกตามสาขา</h2>
+      <div class="chart-wrap"><canvas id="branchChart"></canvas></div>
+    </article>
+  </section>
+
+  <section class="panel table-panel">
+    <div class="table-top">
+      <h2>รายละเอียดรายการเดินรถ</h2>
+      <input id="searchInput" type="search" placeholder="ค้นหาทะเบียนรถ / คนขับ / ปลายทาง">
+    </div>
+
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>วันที่</th>
+            <th>สาขา</th>
+            <th>LTS</th>
+            <th>ทะเบียนหัว</th>
+            <th>เบอร์หาง</th>
+            <th>พขร. หลัก</th>
+            <th>พขร. เสริม</th>
+            <th>ปลายทาง</th>
+            <th>ระยะทาง (กม.)</th>
+            <th>ทางด่วน (บาท)</th>
+            <th>ห้องพัก (บาท)</th>
+            <th>เดินทาง (บาท)</th>
+            <th>รวมค่าใช้จ่าย (บาท)</th>
+          </tr>
+        </thead>
+        <tbody id="dataTable">
+          <tr><td colspan="13">กำลังโหลดข้อมูล...</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="status" id="tableCount"></div>
+  </section>
+
+  <div class="footer">ข้อมูลอ้างอิงจาก Google Sheets · Dashboard แสดงผลตามตัวกรองที่เลือก</div>
+</main>
+
+<script>
+  // 1) นำ URL CSV ที่ได้จาก Google Sheets มาใส่ตรงนี้
+  const SHEET_CSV_URL = "ใส่_URL_CSV_จาก_GOOGLE_SHEETS_ตรงนี้";
+
+  let allRows = [];
+  let charts = {};
+
+  const money = n => Number(n || 0).toLocaleString("th-TH", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2
+  });
+
+  const number = n => Number(n || 0).toLocaleString("th-TH", {
+    maximumFractionDigits: 2
+  });
+
+  function parseCSV(text) {
+    const rows = [];
+    let row = [], cell = "", quoted = false;
+
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+
+      if (ch === '"') {
+        if (quoted && text[i + 1] === '"') {
+          cell += '"';
+          i++;
+        } else {
+          quoted = !quoted;
+        }
+      } else if (ch === "," && !quoted) {
+        row.push(cell);
+        cell = "";
+      } else if ((ch === "\n" || ch === "\r") && !quoted) {
+        if (ch === "\r" && text[i + 1] === "\n") i++;
+        row.push(cell);
+        if (row.some(v => v.trim() !== "")) rows.push(row);
+        row = [];
+        cell = "";
+      } else {
+        cell += ch;
+      }
+    }
+
+    if (cell.length || row.length) {
+      row.push(cell);
+      rows.push(row);
+    }
+
+    return rows;
+  }
+
+  function cleanHeader(s) {
+    return String(s || "")
+      .replace(/^\uFEFF/, "")
+      .replace(/^"|"$/g, "")
+      .trim();
+  }
+
+  function getField(obj, names) {
+    for (const name of names) {
+      if (obj[name] !== undefined && obj[name] !== null) return obj[name];
+    }
+    return "";
+  }
+
+  function parseNum(value) {
+    if (value === null || value === undefined) return 0;
+    const cleaned = String(value).replace(/,/g, "").replace(/[฿\s]/g, "").trim();
+    if (!cleaned || cleaned === "-") return 0;
+    const n = Number(cleaned);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function parseDate(value) {
+    if (!value) return null;
+    const s = String(value).trim();
+
+    // รองรับ yyyy-mm-dd
+    let m = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+    if (m) {
+      let y = Number(m[1]), month = Number(m[2]), day = Number(m[3]);
+      if (y > 2400) y -= 543;
+      const d = new Date(y, month - 1, day);
+      return isNaN(d) ? null : d;
+    }
+
+    // รองรับ dd/mm/yyyy และ พ.ศ.
+    m = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/);
+    if (m) {
+      const day = Number(m[1]), month = Number(m[2]);
+      let year = Number(m[3]);
+      if (year > 2400) year -= 543;
+      const d = new Date(year, month - 1, day);
+      return isNaN(d) ? null : d;
+    }
+
+    const d = new Date(s);
+    return isNaN(d) ? null : d;
+  }
+
+  function monthLabel(date) {
+    return date.toLocaleDateString("th-TH", { month: "short", year: "numeric" });
+  }
+
+  function normalizeRow(raw) {
+    const dateRaw = getField(raw, ["ว/ด/ป", "วันที่", "วัน/เดือน/ปี", "Date"]);
+    const start = parseNum(getField(raw, ["เลขไมล์เริ่ม"]));
+    const end = parseNum(getField(raw, ["เลขไมล์สิ้นสุด"]));
+
+    const explicitDistance = getField(raw, ["ระยะทางรวม"]);
+    let distance = parseNum(explicitDistance);
+    if (!String(explicitDistance).trim() && end >= start && start > 0) {
+      distance = end - start;
+    }
+
+    const toll = parseNum(getField(raw, ["ค่าทางด่วน (บาท)", "ค่าทางด่วน"]));
+    const hotel = parseNum(getField(raw, ["ค่าห้องพัก (บาท)", "ค่าห้องพัก"]));
+    const travel = parseNum(getField(raw, ["ค่าเดินทาง (บาท)", "ค่าเดินทาง"]));
+
+    return {
+      date: parseDate(dateRaw),
+      dateRaw,
+      lts: getField(raw, ["LTS"]),
+      plate: getField(raw, ["ทะเบียนหัว"]),
+      trailer: getField(raw, ["เบอร์หาง"]),
+      driver: getField(raw, ["ชื่อพขร. (หลัก)"]),
+      helper: getField(raw, ["ชื่อพขร. (เสริม)"]),
+      destination: getField(raw, ["ปลายทาง"]),
+      branch: getField(raw, ["สาขา"]) || "ไม่ระบุสาขา",
+      vehicleType: getField(raw, ["master ประเภทรถ"]),
+      distance,
+      toll,
+      hotel,
+      travel,
+      totalCost: toll + hotel + travel
+    };
+  }
+
+  async function loadData() {
+    const status = document.getElementById("status");
+
+    if (!SHEET_CSV_URL.startsWith("http")) {
+      status.className = "status error";
+      status.textContent = "กรุณาใส่ URL CSV จาก Google Sheets ในตัวแปร SHEET_CSV_URL ก่อน";
+      return;
+    }
+
+    try {
+      const response = await fetch(SHEET_CSV_URL);
+      if (!response.ok) throw new Error("HTTP " + response.status);
+
+      const csvText = await response.text();
+      const matrix = parseCSV(csvText);
+
+      if (matrix.length < 2) throw new Error("ไม่พบข้อมูลในชีต");
+
+      const headers = matrix[0].map(cleanHeader);
+      const rawRows = matrix.slice(1).map(cells => {
+        const obj = {};
+        headers.forEach((h, i) => obj[h] = cells[i] ?? "");
+        return obj;
+      });
+
+      allRows = rawRows.map(normalizeRow)
+        .filter(r => r.date || r.plate || r.lts || r.driver);
+
+      if (!allRows.length) throw new Error("ไม่พบรายการที่มีข้อมูล");
+
+      setupFilters();
+      renderDashboard();
+
+      status.className = "status";
+      status.textContent = "โหลดข้อมูลสำเร็จ " + number(allRows.length) + " รายการ";
+    } catch (err) {
+      console.error(err);
+      status.className = "status error";
+      status.textContent =
+        "โหลดข้อมูลไม่สำเร็จ กรุณาตรวจสอบ URL CSV และการเผยแพร่ Google Sheets (" +
+        err.message + ")";
+    }
+  }
+
+  function setupFilters() {
+    const years = [...new Set(allRows.filter(r => r.date).map(r => r.date.getFullYear()))]
+      .sort((a, b) => b - a);
+
+    const yearSelect = document.getElementById("yearFilter");
+    yearSelect.innerHTML = '<option value="all">ทุกปี</option>';
+
+    years.forEach(year => {
+      const opt = document.createElement("option");
+      opt.value = year;
+      opt.textContent = year + 543 + " (พ.ศ.)";
+      yearSelect.appendChild(opt);
+    });
+
+    const branches = [...new Set(allRows.map(r => r.branch).filter(Boolean))].sort();
+    const branchSelect = document.getElementById("branchFilter");
+    branchSelect.innerHTML = '<option value="all">ทุกสาขา</option>';
+
+    branches.forEach(branch => {
+      const opt = document.createElement("option");
+      opt.value = branch;
+      opt.textContent = branch;
+      branchSelect.appendChild(opt);
+    });
+
+    // เลือกปีล่าสุดให้อัตโนมัติ
+    if (years.length) yearSelect.value = String(years[0]);
+  }
+
+  function filteredRows() {
+    const year = document.getElementById("yearFilter").value;
+    const month = document.getElementById("monthFilter").value;
+    const branch = document.getElementById("branchFilter").value;
+
+    return allRows.filter(r => {
+      if (year !== "all" && (!r.date || r.date.getFullYear() !== Number(year))) return false;
+      if (month !== "all" && (!r.date || r.date.getMonth() + 1 !== Number(month))) return false;
+      if (branch !== "all" && r.branch !== branch) return false;
+      return true;
+    });
+  }
+
+  function sum(rows, key) {
+    return rows.reduce((total, r) => total + (Number(r[key]) || 0), 0);
+  }
+
+  function setText(id, value) {
+    document.getElementById(id).textContent = value;
+  }
+
+  function renderDashboard() {
+    const rows = filteredRows();
+    const trips = rows.length;
+    const distance = sum(rows, "distance");
+    const toll = sum(rows, "toll");
+    const hotel = sum(rows, "hotel");
+    const travel = sum(rows, "travel");
+    const cost = toll + hotel + travel;
+
+    setText("kpiTrips", number(trips));
+    setText("kpiDistance", number(distance));
+    setText("kpiCost", money(cost) + " ฿");
+    setText("kpiAvg", money(trips ? cost / trips : 0) + " ฿");
+    setText("kpiToll", money(toll) + " ฿");
+    setText("kpiHotel", money(hotel) + " ฿");
+    setText("kpiTravel", money(travel) + " ฿");
+    setText("kpiAvgDistance", number(trips ? distance / trips : 0));
+
+    renderCharts(rows);
+    renderTable(rows);
+  }
+
+  function createChart(id, config) {
+    if (charts[id]) charts[id].destroy();
+    charts[id] = new Chart(document.getElementById(id), config);
+  }
+
+  function renderCharts(rows) {
+    const monthly = {};
+
+    rows.forEach(r => {
+      if (!r.date) return;
+      const key = r.date.getFullYear() + "-" + String(r.date.getMonth() + 1).padStart(2, "0");
+      if (!monthly[key]) {
+        monthly[key] = {
+          label: monthLabel(r.date),
+          trips: 0,
+          distance: 0,
+          toll: 0,
+          hotel: 0,
+          travel: 0
+        };
+      }
+      monthly[key].trips++;
+      monthly[key].distance += r.distance;
+      monthly[key].toll += r.toll;
+      monthly[key].hotel += r.hotel;
+      monthly[key].travel += r.travel;
+    });
+
+    const months = Object.keys(monthly).sort();
+
+    createChart("trendChart", {
+      data: {
+        labels: months.map(k => monthly[k].label),
+        datasets: [
+          {
+            type: "bar",
+            label: "จำนวนเที่ยว",
+            data: months.map(k => monthly[k].trips),
+            backgroundColor: "#3b82f6",
+            yAxisID: "y"
+          },
+          {
+            type: "line",
+            label: "ระยะทาง (กม.)",
+            data: months.map(k => monthly[k].distance),
+            borderColor: "#f59e0b",
+            backgroundColor: "#f59e0b",
+            tension: 0.3,
+            yAxisID: "y1"
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        scales: {
+          y: { beginAtZero: true, title: { display: true, text: "จำนวนเที่ยว" } },
+          y1: {
+            beginAtZero: true,
+            position: "right",
+            title: { display: true, text: "กิโลเมตร" },
+            grid: { drawOnChartArea: false }
+          }
+        }
+      }
+    });
+
+    createChart("costChart", {
+      type: "bar",
+      data: {
+        labels: months.map(k => monthly[k].label),
+        datasets: [
+          { label: "ค่าทางด่วน", data: months.map(k => monthly[k].toll), backgroundColor: "#2563eb" },
+          { label: "ค่าห้องพัก", data: months.map(k => monthly[k].hotel), backgroundColor: "#10b981" },
+          { label: "ค่าเดินทาง", data: months.map(k => monthly[k].travel), backgroundColor: "#f59e0b" }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } }
+      }
+    });
+
+    createChart("costShareChart", {
+      type: "doughnut",
+      data: {
+        labels: ["ค่าทางด่วน", "ค่าห้องพัก", "ค่าเดินทาง"],
+        datasets: [{
+          data: [sum(rows, "toll"), sum(rows, "hotel"), sum(rows, "travel")],
+          backgroundColor: ["#2563eb", "#10b981", "#f59e0b"],
+          borderWidth: 0
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: "bottom" } }
+      }
+    });
+
+    const branchTotals = {};
+    rows.forEach(r => {
+      branchTotals[r.branch] = (branchTotals[r.branch] || 0) + r.distance;
+    });
+
+    const branchEntries = Object.entries(branchTotals).sort((a, b) => b[1] - a[1]);
+
+    createChart("branchChart", {
+      type: "bar",
+      data: {
+        labels: branchEntries.map(e => e[0]),
+        datasets: [{
+          label: "ระยะทางรวม (กม.)",
+          data: branchEntries.map(e => e[1]),
+          backgroundColor: "#6366f1",
+          borderRadius: 5
+        }]
+      },
+      options: {
+        indexAxis: "y",
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { x: { beginAtZero: true } }
+      }
+    });
+  }
+
+  function renderTable(rows) {
+    const query = document.getElementById("searchInput").value.trim().toLowerCase();
+
+    const visible = rows.filter(r => {
+      const text = [
+        r.dateRaw, r.branch, r.lts, r.plate, r.trailer,
+        r.driver, r.helper, r.destination, r.vehicleType
+      ].join(" ").toLowerCase();
+
+      return text.includes(query);
+    });
+
+    const tbody = document.getElementById("dataTable");
+    tbody.innerHTML = "";
+
+    if (!visible.length) {
+      tbody.innerHTML = '<tr><td colspan="13">ไม่พบข้อมูลตามเงื่อนไข</td></tr>';
+    } else {
+      const fragment = document.createDocumentFragment();
+
+      visible.forEach(r => {
+        const tr = document.createElement("tr");
+        const dateText = r.date
+          ? r.date.toLocaleDateString("th-TH")
+          : r.dateRaw;
+
+        const values = [
+          dateText, r.branch, r.lts, r.plate, r.trailer,
+          r.driver, r.helper, r.destination, number(r.distance),
+          money(r.toll), money(r.hotel), money(r.travel), money(r.totalCost)
+        ];
+
+        values.forEach(value => {
+          const td = document.createElement("td");
+          td.textContent = value ?? "";
+          tr.appendChild(td);
+        });
+
+        fragment.appendChild(tr);
+      });
+
+      tbody.appendChild(fragment);
+    }
+
+    setText("tableCount", "แสดง " + number(visible.length) + " จาก " + number(rows.length) + " รายการ");
+  }
+
+  ["yearFilter", "monthFilter", "branchFilter"].forEach(id => {
+    document.getElementById(id).addEventListener("change", renderDashboard);
+  });
+
+  document.getElementById("searchInput").addEventListener("input", () => {
+    renderTable(filteredRows());
+  });
+
+  document.getElementById("resetBtn").addEventListener("click", () => {
+    document.getElementById("yearFilter").value = "all";
+    document.getElementById("monthFilter").value = "all";
+    document.getElementById("branchFilter").value = "all";
+    document.getElementById("searchInput").value = "";
+    renderDashboard();
+  });
+
+  loadData();
+</script>
+</body>
+</html>

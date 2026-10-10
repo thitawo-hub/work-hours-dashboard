@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="th"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Driver App</title><link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--g9:#0f3d24;--g8:#14532d;--g7:#166534;--g1:#e8f0eb;--bg:#f4f6f5;--ink:#14231a;--mut:#5f6f66;--line:#dfe6e2;--red:#b91c1c;--ok:#15803d;--amb:#b45309}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font-family:Sarabun,"Noto Sans Thai",Tahoma,Arial,sans-serif;color:var(--ink);font-size:14px}
+header{background:linear-gradient(135deg,var(--g9),var(--g7));color:#fff;padding:16px 28px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;position:sticky;top:0;z-index:5;box-shadow:0 2px 8px rgba(15,61,36,.25)}
+header h1{margin:0;font-size:21px;font-weight:700;flex:1}
+header h1 small{display:block;font-size:12px;font-weight:400;opacity:.75;margin-top:2px}
+.tabs{flex-basis:100%;display:flex;gap:6px;margin:-4px 0 2px}
+.tabs a{color:#fff;text-decoration:none;font-size:13px;font-weight:600;padding:6px 16px;border-radius:999px;background:rgba(255,255,255,.12)}
+.tabs a.on{background:#fff;color:var(--g8)}.tabs a:hover:not(.on){background:rgba(255,255,255,.25)}
+input,select,button{font:inherit;font-size:13px;padding:8px 11px;border-radius:8px;border:1px solid var(--line)}
+header select{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.28);color-scheme:dark}
+header option{color:#14231a;background:#fff}
+button{background:#fff;color:var(--g8);border:0;font-weight:700;cursor:pointer}button:hover{background:var(--g1)}button:disabled{opacity:.5}
+.page{max-width:1600px;margin:auto;padding:22px 24px}
+.warn{background:#fff;color:var(--mut);border:1px solid var(--line);border-left:4px solid var(--g7);padding:9px 14px;border-radius:8px;font-size:12.5px;margin-bottom:16px;overflow-wrap:anywhere}
+.box{background:#fff;border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin-bottom:18px;box-shadow:0 1px 2px rgba(15,61,36,.06)}
+.box h2{margin:0 0 14px;font-size:16px;font-weight:700;color:var(--g8);padding-bottom:10px;border-bottom:2px solid var(--g1)}
+.wrap{overflow:auto;border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;font-size:12.5px;white-space:nowrap;font-variant-numeric:tabular-nums;width:100%}
+th,td{padding:6px 9px;border-bottom:1px solid #edf1ef;text-align:center;min-width:38px}
+th{background:var(--g1);color:var(--g8);font-weight:700;font-size:12px}
+th:first-child,td:first-child{text-align:left;position:sticky;left:0;min-width:170px;background:#fff;z-index:1;border-right:1px solid var(--line)}
+th:first-child{background:var(--g1)}
+tbody tr:nth-child(even) td{background:#fafcfb}tbody tr:nth-child(even) td:first-child{background:#fafcfb}
+tr:hover td{background:#f0f6f2!important}
+td.z{color:#aab5ae}td.r{color:var(--red);font-weight:700}
+td.pg{color:var(--ok);font-weight:700}td.pa{color:var(--amb);font-weight:700}
+tr.pc td:first-child{color:#1d4ed8;font-weight:700}
+td.avg,th.avg{background:var(--g1)!important;font-weight:700}
+@media(max-width:900px){.page{padding:14px}header{padding:14px}}
+</style></head><body>
+<header><nav class="tabs"><a href="index.html">ภาพรวม</a><a href="rest-hours.html">เวลาพัก พขร.</a><a class="on" href="driver-app.html">Driver App</a></nav>
+<h1>Driver App<small>สรุปจำนวนงานและทริปรายวัน แยกตามสาขา</small></h1>
+<select id="month" title="เลือกเดือน"></select><button id="reload" type="button">รีเฟรช</button></header>
+<div class="page"><div id="msg" class="warn">กำลังโหลดข้อมูล...</div><div id="out"></div></div>
+<script>
+"use strict";
+const URL_CSV="https://docs.google.com/spreadsheets/d/e/2PACX-1vSWLQuTDK81qBHrVGIrbfLMQd2SbGcmeVPqgnd5RNzIKEYFYgenm6kofz8bzaLI-wmSnY6oZE8759Vy/pub?gid=686076852&single=true&output=csv";
+const $=id=>document.getElementById(id),tx=v=>String(v??"").replace(/\s+/g," ").trim();
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let blocks=[];
+function parseRows(s){const out=[];let r=[],f="",q=false;s=s.replace(/^\uFEFF/,"");
+for(let i=0;i<s.length;i++){const c=s[i];
+if(q){if(c=='"'){if(s[i+1]=='"'){f+='"';i++}else q=false}else f+=c}
+else if(c=='"')q=true;else if(c==","){r.push(f);f=""}else if(c=="\n"){r.push(f);out.push(r);r=[];f=""}else if(c!="\r")f+=c}
+if(f.length||r.length){r.push(f);out.push(r)}return out}
+function build(rows){blocks=[];const hdr=[];
+rows.forEach((r,i)=>{const L=r.findIndex(c=>tx(c)==="รายการ");if(L>=0&&tx(r[L+1])==="1"&&tx(r[L+2])==="2")hdr.push({i,L})});
+hdr.forEach((h,k)=>{const end=k+1<hdr.length?hdr[k+1].i:rows.length,hr=rows[h.i];
+let n=0;while(/^\d+$/.test(tx(hr[h.L+1+n])))n++;
+const avg=tx(hr[h.L+1+n]).toUpperCase()==="AVG",cols=n+(avg?1:0);
+const days=[];for(let d=0;d<n;d++)days.push(tx(hr[h.L+1+d]));if(avg)days.push("AVG");
+let label="";if(h.i>0){const up=rows[h.i-1].map(tx).filter(Boolean);if(up.length&&up.length<=2)label=up.join(" ")}
+if(!label)label=rows[h.i].slice(0,h.L).map(tx).filter(Boolean).join(" ");
+const secs=[];let cur=null;
+for(let i=h.i+1;i<end;i++){const r=rows[i],name=tx(r[h.L]),vals=[];for(let d=0;d<cols;d++)vals.push(tx(r[h.L+1+d]));
+if(!name&&!vals.some(Boolean))continue;
+if(/^[A-Za-z]{2,6}$/.test(name)&&!vals.some(Boolean)){cur={name,rows:[]};secs.push(cur);continue}
+if(cur)cur.rows.push({name,vals})}
+blocks.push({label:label||"ช่วงที่ "+(k+1),days,avg,secs})})}
+function cell(v,isAvg){if(v==="")return`<td class="${isAvg?"avg":""}"></td>`;
+let c=isAvg?"avg":"";if(/%$/.test(v)){const n=parseFloat(v);c+=(n>=100?" pg":" pa")}else if(/^-?\d+(\.\d+)?$/.test(v)&&Number(v)===0)c+=" z";return`<td class="${c}">${esc(v)}</td>`}
+function render(){const b=blocks[+$("month").value];const out=$("out");
+if(!b){out.innerHTML="";return}
+if(!b.secs.length){out.innerHTML='<div class="box">ไม่พบแถวหัวสาขา (เช่น MK, TL) ในช่วงนี้</div>';return}
+out.innerHTML=b.secs.map(s=>{
+const head='<tr><th>รายการ</th>'+b.days.map((d,i)=>`<th class="${b.avg&&i===b.days.length-1?"avg":""}">${esc(d)}</th>`).join("")+'</tr>';
+const body=s.rows.map(r=>{const pc=/%|check|คิดเป็น/i.test(r.name);const red=/ค้างคืน|งานต่อเนื่อง|รอปิด|ยังไม่เปิด/.test(r.name);
+return`<tr class="${pc?"pc":""}"><td>${esc(r.name)}</td>`+r.vals.map((v,i)=>{const isAvg=b.avg&&i===b.days.length-1;
+if(red&&!isAvg&&/^\d+(\.\d+)?$/.test(v)&&Number(v)>0)return`<td class="r">${esc(v)}</td>`;return cell(v,isAvg)}).join("")+"</tr>"}).join("");
+return`<div class="box"><h2>${esc(s.name)}</h2><div class="wrap"><table><thead>${head}</thead><tbody>${body}</tbody></table></div></div>`}).join("")}
+async function load(){const btn=$("reload");btn.disabled=true;$("msg").textContent="กำลังโหลดข้อมูล...";
+try{let res;for(let i=0;i<3;i++){try{res=await fetch(URL_CSV+"&_="+Date.now(),{cache:"no-store"});if(res.ok)break;throw new Error("HTTP "+res.status)}catch(e){if(i===2)throw e;await new Promise(r=>setTimeout(r,800*(i+1)))}}
+const text=await res.text();if(/<html[\s>]/i.test(text.slice(0,500)))throw new Error("ไม่ได้รับ CSV กรุณาตรวจสอบการเผยแพร่แท็บ Driver app");
+build(parseRows(text));
+if(!blocks.length)throw new Error("ไม่พบแถวหัวตาราง (คอลัมน์ รายการ ตามด้วยวันที่ 1, 2, 3 ...)");
+const sel=$("month"),old=sel.value;sel.innerHTML=blocks.map((b,i)=>`<option value="${i}">${esc(b.label)}</option>`).join("");
+sel.value=old&&blocks[+old]?old:String(blocks.length-1);
+$("msg").textContent=`โหลดสำเร็จ · ${blocks.length} เดือน/ช่วง · ${blocks[+sel.value].secs.length} สาขา`;render()}
+catch(e){$("msg").textContent="โหลดข้อมูลไม่สำเร็จ: "+e.message}finally{btn.disabled=false}}
+$("month").addEventListener("change",()=>{render();$("msg").textContent=`แสดง ${blocks[+$("month").value].label} · ${blocks[+$("month").value].secs.length} สาขา`});
+$("reload").addEventListener("click",load);load();
+</script></body></html>

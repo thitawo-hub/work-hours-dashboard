@@ -161,9 +161,10 @@ $("tDrv").innerHTML='<tr><th class="l">พนักงานขับรถ</th>
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 async function get(u){const r=await fetch(u,{cache:"no-store"});if(!r.ok)throw new Error("HTTP "+r.status);return csv(await r.text())}
 async function load(){$("status").textContent="กำลังโหลด...";
-try{const fail=[];const opt=(g,name)=>g?get(SHEET_BASE+"gid="+g+"&single=true&output=csv").catch(e=>{fail.push(name+" ("+e.message+")");return[]}):Promise.resolve([]);
+try{const fail=[],sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const opt=(g,name)=>g?(async()=>{for(let i=0;i<3;i++){try{return await get(SHEET_BASE+"gid="+g+"&single=true&output=csv")}catch(e){if(i===2){fail.push(name+" ("+e.message+")");return[]}await sleep(800*(i+1))}}})():Promise.resolve([]);
 const [d,t,mc,md]=await Promise.all([get(DATA_URL),get(TARGET_URL),opt(MASTER_CAR_GID,"Master car"),opt(MASTER_DRIVER_GID,"Master driver")]);
-MC=mc.map(r=>({branch:tx(r["สาขา"]),plate:pl(r["ทะเบียน"])||pl(r["เบอร์รถ"]),type:tx(r["ประเภทรถ"])})).filter(x=>x.plate);
+MC=mc.map(r=>({branch:tx(r["สาขา"]),plate:pl(r["ทะเบียน"])||pl(r["เบอร์รถ"]),type:tx(r["ประเภทรถ"])})).filter(x=>x.plate&&!/pick\s*up/i.test(x.branch+" "+x.type));
 MD=md.map(r=>({branch:tx(r["สาขา"]),name:nm(r["ชื่อ พขร."]),pos:tx(r["ตำแหน่ง"])||tx(Object.values(r)[3]),leave:pdate(r["วันที่ลาออก"])})).filter(x=>x.name);
 const w=[...fail];if(MASTER_DRIVER_GID&&!MD.length&&!w.some(x=>x.startsWith("Master driver")))w.push("Master driver ไม่มีข้อมูล");if(MASTER_CAR_GID&&!MC.length&&!w.some(x=>x.startsWith("Master car")))w.push("Master car ไม่มีข้อมูล");
 masterWarn=w.length?"⚠ โหลดไม่สำเร็จ: "+w.join(", "):"";

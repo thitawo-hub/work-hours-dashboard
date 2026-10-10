@@ -44,6 +44,8 @@ dialog button.primary{background:var(--g8);color:#fff;border-color:var(--g8)}dia
 .dt{display:flex;gap:8px}.dt input{width:auto;min-width:0;margin-top:5px}.dt input:first-child{flex:3}.dt input:last-child{flex:2}
 .outline{border:1px solid var(--g7)}
 #listDlg{width:min(980px,95vw)}#listDlg .wrap{max-height:55vh;margin-bottom:12px}
+#logDlg{width:min(1100px,96vw)}#logDlg .wrap{max-height:55vh;margin-bottom:12px}#logDlg .controls{margin-bottom:10px;align-items:center}
+#logDlg input{width:230px;margin-top:0}#logDlg td.reason{white-space:normal;min-width:260px}#logInfo{color:var(--mut);font-size:12.5px}
 @media(max-width:1100px){.cards{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:900px){.cards{grid-template-columns:repeat(2,1fr)}.page{padding:14px}header{padding:14px}.controls>*{width:100%}}
 </style></head><body>
@@ -66,7 +68,8 @@ dialog button.primary{background:var(--g8);color:#fff;border-color:var(--g8)}dia
 <select id="workStatus"><option value="all">ชั่วโมงทำงาน: ทั้งหมด</option><option value="over">เกิน 14 ชม.</option><option value="ok">ไม่เกิน 14 ชม.</option></select>
 <select id="status"><option value="all">เวลาพัก: ทั้งหมด</option><option value="ผ่าน">พักผ่าน</option><option value="ไม่ผ่าน">พักไม่ผ่าน</option></select>
 <select id="sortWork"><option value="default">เรียงลำดับ: ตามชื่อ/เวลา</option><option value="desc">ชั่วโมงทำงาน มาก → น้อย</option><option value="asc">ชั่วโมงทำงาน น้อย → มาก</option></select>
-<button type="button" id="viewEdited" class="outline">ดูรายการที่แก้ไข (<span id="editedCount">0</span>)</button></div>
+<button type="button" id="viewEdited" class="outline">ดูรายการที่แก้ไข (<span id="editedCount">0</span>)</button>
+<button type="button" id="viewLog" class="outline">Log วันที่/เวลาไม่ถูกต้อง (<span id="logCount">0</span>)</button></div>
 <div class="wrap"><table><thead><tr><th>พขร.</th><th>สาขา</th><th>แหล่งเวลา</th><th>เริ่มงาน</th><th>จบงาน</th><th id="thWork" style="cursor:pointer" title="คลิกเพื่อเรียงลำดับ">ชั่วโมงทำงาน <span id="sortArrow"></span></th><th>สถานะทำงาน</th><th>พักก่อนงานถัดไป</th><th>สถานะพัก</th><th>จัดการ</th></tr></thead>
 <tbody id="workRows"><tr><td colspan="10">กำลังโหลดข้อมูล...</td></tr></tbody></table></div></div>
 <dialog id="editDlg"><form id="editForm" novalidate>
@@ -80,6 +83,13 @@ dialog button.primary{background:var(--g8);color:#fff;border-color:var(--g8)}dia
 <div class="wrap"><table><thead><tr><th>พขร.</th><th>สาขา</th><th>แหล่งเวลา</th><th>เวลาเดิม</th><th>เวลาที่แก้ไข</th><th>ชั่วโมงทำงานใหม่</th><th>จัดการ</th></tr></thead>
 <tbody id="editedRows"></tbody></table></div>
 <div class="actions"><button type="button" id="listClose">ปิด</button></div></dialog>
+<dialog id="logDlg"><h3>Log ข้อมูลที่ถูกข้าม</h3><p>ดูว่าแถวไหนในชีตไม่ถูกนำมาคำนวณ และเพราะอะไร "แถวในชีต" คือเลขแถวใน Google Sheets (แถวที่ 1 คือหัวตาราง) ส่วนค่าที่แสดงเป็นค่าเดิมตามที่อ่านได้จากชีต</p>
+<div class="controls"><select id="logType"><option value="invalid">วันที่/เวลาไม่ถูกต้อง</option><option value="missing">ไม่มีคู่เวลาเริ่ม/จบ</option><option value="incomplete">คู่เวลาไม่ครบ</option><option value="nodriver">ไม่มีชื่อ พขร.</option><option value="all">ทุกประเภท</option></select>
+<input id="logSearch" placeholder="ค้นหาชื่อ พขร. หรือเลขแถว" autocomplete="off">
+<button type="button" id="logDownload" class="outline">ดาวน์โหลด CSV</button><span id="logInfo"></span></div>
+<div class="wrap"><table><thead><tr><th>แถวในชีต</th><th>พขร.</th><th>สาขา</th><th>Date (ค่าเดิม)</th><th>แหล่งเวลา</th><th>เวลาเริ่ม (ค่าเดิม)</th><th>เวลาจบ (ค่าเดิม)</th><th>สาเหตุ</th></tr></thead>
+<tbody id="logRows"></tbody></table></div>
+<div class="actions"><button type="button" id="logClose">ปิด</button></div></dialog>
 </div>
 <script>
 "use strict";
@@ -89,14 +99,14 @@ selectedStart:["เวลาเริ่มที่เลือก"],selectedEn
 famulaStart:["เริ่ม Famula","เริ่มงาน Famula"],famulaEnd:["จบ Famula","จบงาน Famula"]};
 const REST_LIMIT_MS=10*3600*1000;
 const WORK_LIMIT_MS=14*3600*1000;
-let records=[],restRows=[],loading=false;
-function parseCSV(text){const rows=[];let row=[],cell="",quoted=false;text=text.replace(/^\uFEFF/,"");
+let records=[],restRows=[],logRows=[],loading=false;
+function parseCSV(text){const rows=[],nums=[];let row=[],cell="",quoted=false,rowNo=1;text=text.replace(/^\uFEFF/,"");
 for(let i=0;i<text.length;i++){const c=text[i],next=text[i+1];
 if(c==='"'&&quoted&&next==='"'){cell+='"';i++}else if(c==='"')quoted=!quoted;
 else if(c===","&&!quoted){row.push(cell.trim());cell=""}
-else if((c==="\n"||c==="\r")&&!quoted){if(c==="\r"&&next==="\n")i++;row.push(cell.trim());if(row.some(v=>v!==""))rows.push(row);row=[];cell=""}
+else if((c==="\n"||c==="\r")&&!quoted){if(c==="\r"&&next==="\n")i++;row.push(cell.trim());if(row.some(v=>v!==""))rows.push(row),nums.push(rowNo);rowNo++;row=[];cell=""}
 else cell+=c}
-if(cell.length||row.length){row.push(cell.trim());if(row.some(v=>v!==""))rows.push(row)}return rows}
+if(cell.length||row.length){row.push(cell.trim());if(row.some(v=>v!==""))rows.push(row),nums.push(rowNo)}rows.nums=nums;return rows}
 const normalizeHeader=v=>String(v||"").replace(/^\uFEFF/,"").replace(/\s+/g," ").trim().toLowerCase();
 function getColumnMap(h){const m=new Map();h.forEach((x,i)=>{const k=normalizeHeader(x);if(k&&!m.has(k))m.set(k,i)});return m}
 function getValue(row,cm,aliases){for(const a of aliases){const i=cm.get(normalizeHeader(a));if(i!==undefined){const v=String(row[i]??"").trim();if(v!=="")return v}}return ""}
@@ -120,21 +130,27 @@ return{hour,minute,second}}
 function combineDateTime(dateValue,timeValue){if(!timeValue)return null;const full=parseDate(timeValue);if(full)return full;
 const t=parseTime(timeValue),d=parseDate(dateValue);if(!t||!d)return null;
 return new Date(d.getFullYear(),d.getMonth(),d.getDate(),t.hour,t.minute,t.second)}
+function whyBad(dateRaw,raw){
+if(parseTime(raw)&&!parseDate(dateRaw))return"ช่อง Date ว่างหรืออ่านไม่ได้";
+return"อ่านค่าไม่ได้ (รูปแบบวันที่/เวลาไม่ถูกต้อง)"}
 function buildRecords(row,cols,rowNumber,stats){
 const driver=getValue(row,cols,HEADERS.driver),branch=getValue(row,cols,HEADERS.branch),dateRaw=getValue(row,cols,HEADERS.date);
-if(!driver){stats.missingDriver++;return[]}
+const addLog=(type,reason,source,startRaw,endRaw)=>stats.log.push({row:rowNumber,type,driver,branch,dateRaw,source:source||"",startRaw:startRaw||"",endRaw:endRaw||"",reason});
+if(!driver){stats.missingDriver++;addLog("nodriver","ไม่มีชื่อ พขร.");return[]}
 const ss=getValue(row,cols,HEADERS.selectedStart),se=getValue(row,cols,HEADERS.selectedEnd),pairs=[];
 if(ss&&se)pairs.push({label:"เวลาที่เลือก",startRaw:ss,endRaw:se});
 else{[{label:"GH",startRaw:getValue(row,cols,HEADERS.ghStart),endRaw:getValue(row,cols,HEADERS.ghEnd)},
 {label:"SW",startRaw:getValue(row,cols,HEADERS.swStart),endRaw:getValue(row,cols,HEADERS.swEnd)},
 {label:"Famula",startRaw:getValue(row,cols,HEADERS.famulaStart),endRaw:getValue(row,cols,HEADERS.famulaEnd)}]
-.forEach(p=>{if(p.startRaw&&p.endRaw)pairs.push(p);else if(p.startRaw||p.endRaw)stats.incompletePairs++})}
-if(!pairs.length){stats.missingTimes++;return[]}
+.forEach(p=>{if(p.startRaw&&p.endRaw)pairs.push(p);else if(p.startRaw||p.endRaw){stats.incompletePairs++;addLog("incomplete","มีแค่เวลา"+(p.startRaw?"เริ่ม":"จบ")+" ไม่มีอีกฝั่ง",p.label,p.startRaw,p.endRaw)}})}
+if(!pairs.length){stats.missingTimes++;addLog("missing","ไม่มีคู่เวลาเริ่ม/จบ");return[]}
 const result=[];
 pairs.forEach(p=>{const start=combineDateTime(dateRaw,p.startRaw);let end=combineDateTime(dateRaw,p.endRaw);
-if(!start||!end){stats.invalidDates++;return}
+if(!start||!end){stats.invalidDates++;
+const a=start?"":"เวลาเริ่ม: "+whyBad(dateRaw,p.startRaw),b=end?"":"เวลาจบ: "+whyBad(dateRaw,p.endRaw);
+addLog("invalid",[a,b].filter(Boolean).join(" | "),p.label,p.startRaw,p.endRaw);return}
 if(end<start&&p.endRaw.indexOf("/")===-1&&!/^\d{4}-\d{1,2}-\d{1,2}/.test(p.endRaw)){if(start.getTime()-end.getTime()<=86400000)end=new Date(end.getTime()+86400000)}
-if(end<start){stats.invalidDates++;return}
+if(end<start){stats.invalidDates++;addLog("invalid","เวลาจบก่อนเวลาเริ่ม",p.label,p.startRaw,p.endRaw);return}
 result.push({driver,branch,start,end,source:p.label,rowNumber})});
 return result}
 async function loadData(){if(loading)return;loading=true;
@@ -150,8 +166,9 @@ const columns=getColumnMap(data[0]);
 const required=[{name:"ชื่อ พขร",aliases:HEADERS.driver},{name:"Date",aliases:HEADERS.date},{name:"สาขา",aliases:HEADERS.branch}];
 const missingHeaders=required.filter(it=>!it.aliases.some(a=>columns.has(normalizeHeader(a)))).map(it=>it.name);
 if(missingHeaders.includes("ชื่อ พขร"))throw new Error("ไม่พบหัวคอลัมน์ชื่อ พขร กรุณาตรวจสอบชื่อหัวตาราง");
-const stats={missingDriver:0,missingTimes:0,incompletePairs:0,invalidDates:0},nr=[];
-data.slice(1).forEach((row,i)=>nr.push(...buildRecords(row,columns,i+2,stats)));
+const stats={missingDriver:0,missingTimes:0,incompletePairs:0,invalidDates:0,log:[]},nr=[];
+data.slice(1).forEach((row,i)=>nr.push(...buildRecords(row,columns,data.nums?data.nums[i+1]:i+2,stats)));
+logRows=stats.log;
 records=nr;
 records.forEach(r=>{r.origStart=r.start;r.origEnd=r.end;r.key=[r.driver,r.source,r.origStart.getTime(),r.origEnd.getTime()].join("|")});
 let ovrNote="";
@@ -245,6 +262,7 @@ document.getElementById("drivers").textContent=drivers.size;document.getElementB
 document.getElementById("rate").textContent=(restRows.length?Math.round(passed/restRows.length*100):0)+"%";
 document.getElementById("jobs").textContent=records.length;document.getElementById("over").textContent=overCount;
 document.getElementById("editedCount").textContent=records.filter(r=>r.edited).length;
+document.getElementById("logCount").textContent=logRows.filter(l=>l.type==="invalid").length;
 const works=records.filter(r=>{const over=(r.end-r.start)>WORK_LIMIT_MS;
 return r.driver.toLowerCase().includes(search)&&(branch==="all"||r.branch===branch)
 &&(workStatus==="all"||(workStatus==="over"?over:!over))&&(status==="all"||r.restStatus===status)});
@@ -285,5 +303,27 @@ document.getElementById("listClose").addEventListener("click",()=>document.getEl
 document.getElementById("thWork").addEventListener("click",()=>{const s=document.getElementById("sortWork");
 s.value=s.value==="default"?"desc":s.value==="desc"?"asc":"default";render()});
 document.getElementById("branch").addEventListener("change",render);
+const LOG_TYPES={invalid:"วันที่/เวลาไม่ถูกต้อง",missing:"ไม่มีคู่เวลาเริ่ม/จบ",incomplete:"คู่เวลาไม่ครบ",nodriver:"ไม่มีชื่อ พขร."};
+function filteredLog(){const t=document.getElementById("logType").value,q=document.getElementById("logSearch").value.trim().toLowerCase();
+return logRows.filter(l=>(t==="all"||l.type===t)&&(!q||l.driver.toLowerCase().includes(q)||String(l.row)===q))}
+function renderLog(){const tb=document.getElementById("logRows");tb.innerHTML="";const list=filteredLog();
+document.getElementById("logInfo").textContent="แสดง "+list.length+" จากทั้งหมด "+logRows.length+" รายการ";
+if(!list.length){emptyRow(tb,8);tb.querySelector("td").textContent="ไม่พบรายการ";return}
+list.forEach(l=>{const tr=document.createElement("tr");
+[l.row,l.driver||"-",l.branch||"-",l.dateRaw||"-",l.source||"-",l.startRaw||"-",l.endRaw||"-",l.reason].forEach((v,i)=>{const td=document.createElement("td");td.textContent=v;
+if(i===7)td.className=l.type==="invalid"?"reason fail":"reason";tr.appendChild(td)});
+tb.appendChild(tr)})}
+function csvCell(v){v=String(v==null?"":v);return /[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}
+function downloadLog(){const list=filteredLog();
+const head=["แถวในชีต","พขร.","สาขา","Date (ค่าเดิม)","แหล่งเวลา","เวลาเริ่ม (ค่าเดิม)","เวลาจบ (ค่าเดิม)","ประเภท","สาเหตุ"];
+const lines=[head].concat(list.map(l=>[l.row,l.driver,l.branch,l.dateRaw,l.source,l.startRaw,l.endRaw,LOG_TYPES[l.type],l.reason]));
+const csv="﻿"+lines.map(r=>r.map(csvCell).join(",")).join("\r\n");
+const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
+a.download="log-ข้อมูลที่มีปัญหา.csv";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+document.getElementById("viewLog").addEventListener("click",()=>{renderLog();document.getElementById("logDlg").showModal()});
+document.getElementById("logClose").addEventListener("click",()=>document.getElementById("logDlg").close());
+document.getElementById("logType").addEventListener("change",renderLog);
+document.getElementById("logSearch").addEventListener("input",renderLog);
+document.getElementById("logDownload").addEventListener("click",downloadLog);
 loadData();
 </script></body></html>

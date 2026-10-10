@@ -67,7 +67,7 @@ const DATA_URL="https://docs.google.com/spreadsheets/d/e/2PACX-1vSWLQuTDK81qBHrV
 const TARGET_URL="https://docs.google.com/spreadsheets/d/e/2PACX-1vSWLQuTDK81qBHrVGIrbfLMQd2SbGcmeVPqgnd5RNzIKEYFYgenm6kofz8bzaLI-wmSnY6oZE8759Vy/pub?gid=1776706184&single=true&output=csv";
 const MAX_TRIP_KM=3000; // ระยะทางต่อแถวที่เกินนี้ถือว่าผิดปกติ ไม่นำมารวม
 // ใส่ gid ของแท็บ Master car / Master driver (ดูจาก URL ตอนเปิดแท็บ: ...#gid=ตัวเลข)
-const MASTER_CAR_GID="", MASTER_DRIVER_GID="";
+const MASTER_CAR_GID="1668913986", MASTER_DRIVER_GID="459940419";
 const SHEET_BASE=DATA_URL.split("gid=")[0];
 let rows=[],targets=[],bad=0,MC=[],MD=[];
 const $=id=>document.getElementById(id),tx=v=>String(v??"").trim();

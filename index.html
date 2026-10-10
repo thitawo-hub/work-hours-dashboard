@@ -36,6 +36,8 @@ th:first-child,td:first-child,td.l,th.l{text-align:left}
 .tabs{flex-basis:100%;display:flex;gap:6px;margin:-4px 0 2px}
 .tabs a{color:#fff;text-decoration:none;font-size:13px;font-weight:600;padding:6px 16px;border-radius:999px;background:rgba(255,255,255,.12)}
 .tabs a.on{background:#fff;color:var(--g8)}.tabs a:hover:not(.on){background:rgba(255,255,255,.25)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px}.grid2>.box{margin-bottom:0}
+@media(max-width:900px){.grid2{grid-template-columns:1fr}}
 </style></head><body>
 <header><nav class="tabs"><a class="on" href="index.html">ภาพรวม</a><a href="rest-hours.html">เวลาพัก พขร.</a></nav><h1>Linde Fleet Dashboard<small>ระยะทาง · จำนวนรถ · อัตรากำลังคน เทียบ Target (รอบ 26–25)</small></h1>
 <select id="branch"><option value="">ทุกสาขา</option></select>
@@ -51,16 +53,16 @@ th:first-child,td:first-child,td.l,th.l{text-align:left}
 <div class="k"><small>เที่ยวรวม</small><b id="kTrip">-</b></div>
 </div>
 <div class="box"><h2>ระยะทางวิ่งงานประจำวัน : กิโลเมตร (เส้นประ = Target/วัน)</h2><svg id="chart"></svg></div>
-<div class="grid">
-<div class="box"><h2>อัตรากำลังคนและรถขนส่ง เทียบ Target</h2><div class="wrap"><table id="tCrew"></table></div><h2 style="margin-top:18px">LOCO แยกสาขา</h2><div class="wrap"><table id="tLoco"></table></div>
-<h2 style="margin-top:18px">ระยะทางรายคนขับ</h2><div class="wrap"><table id="tDrv"></table></div></div>
+<div class="grid2">
+<div class="box"><h2>อัตรากำลังคนและรถขนส่ง เทียบ Target</h2><div class="wrap"><table id="tCrew"></table></div><h2 style="margin-top:18px">LOCO แยกสาขา</h2><div class="wrap"><table id="tLoco"></table></div></div>
+<div class="box"><h2>จำนวนรถต่อวัน (LOCO) เทียบ Target</h2><svg id="cLocoCar" style="width:100%;height:210px"></svg><h2 style="margin-top:18px">จำนวนคนต่อวัน (LOCO) เทียบ Target</h2><svg id="cLocoPer" style="width:100%;height:210px"></svg></div>
+</div>
+<div class="grid2">
 <div class="box"><h2>ประมาณการระยะทางรายคันเทียบเป้า : กิโลเมตร</h2><div class="wrap"><table id="tCar"></table></div></div>
-</div>
-<div class="grid" style="grid-template-columns:1fr 1fr">
-<div class="box"><h2>จำนวนรถต่อวัน (LOCO) เทียบ Target</h2><svg id="cLocoCar" style="width:100%;height:220px"></svg></div>
-<div class="box"><h2>จำนวนคนต่อวัน (LOCO) เทียบ Target</h2><svg id="cLocoPer" style="width:100%;height:220px"></svg></div>
+<div class="box"><h2>ระยะทางรายคนขับ</h2><div class="wrap"><table id="tDrv"></table></div></div>
 </div>
 </div>
+
 <script>
 "use strict";
 const DATA_URL="https://docs.google.com/spreadsheets/d/e/2PACX-1vSWLQuTDK81qBHrVGIrbfLMQd2SbGcmeVPqgnd5RNzIKEYFYgenm6kofz8bzaLI-wmSnY6oZE8759Vy/pub?gid=1490125939&single=true&output=csv";

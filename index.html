@@ -164,7 +164,7 @@ async function load(){$("status").textContent="กำลังโหลด...";
 try{const opt=g=>g?get(SHEET_BASE+"gid="+g+"&single=true&output=csv").catch(()=>[]):Promise.resolve([]);
 const [d,t,mc,md]=await Promise.all([get(DATA_URL),get(TARGET_URL),opt(MASTER_CAR_GID),opt(MASTER_DRIVER_GID)]);
 MC=mc.map(r=>({branch:tx(r["สาขา"]),plate:pl(r["ทะเบียน"])||pl(r["เบอร์รถ"]),type:tx(r["ประเภทรถ"])})).filter(x=>x.plate);
-MD=md.map(r=>({branch:tx(r["สาขา"]),name:nm(r["ชื่อ พขร."]),pos:tx(r["ตำแหน่ง"]),leave:pdate(r["วันที่ลาออก"])})).filter(x=>x.name);
+MD=md.map(r=>({branch:tx(r["สาขา"]),name:nm(r["ชื่อ พขร."]),pos:tx(r["ตำแหน่ง"])||tx(Object.values(r)[3]),leave:pdate(r["วันที่ลาออก"])})).filter(x=>x.name);
 const all=d.map(norm);bad=all.filter(r=>r.km<0||r.km>MAX_TRIP_KM).length;rows=all.filter(r=>r.km>=0&&r.km<=MAX_TRIP_KM);
 targets=t.map(normT);
 const sb=$("branch"),pv=sb.value;sb.innerHTML='<option value="">ทุกสาขา</option>'+[...new Set(rows.filter(r=>!r.help).map(r=>r.branch))].sort().map(x=>`<option>${esc(x)}</option>`).join("");sb.value=pv;

@@ -145,11 +145,14 @@ const stats={missingDriver:0,missingTimes:0,incompletePairs:0,invalidDates:0},nr
 data.slice(1).forEach((row,i)=>nr.push(...buildRecords(row,columns,i+2,stats)));
 records=nr;
 records.forEach(r=>{r.origStart=r.start;r.origEnd=r.end;r.key=[r.driver,r.source,r.origStart.getTime(),r.origEnd.getTime()].join("|")});
+let ovrNote="";
+try{await refreshOverrides()}catch(e){overrides=loadLocal();ovrNote=" | โหลดค่าที่แก้ไขจากชีตไม่สำเร็จ ("+e.message+") ใช้ค่าในเบราว์เซอร์แทน"}
 applyOverrides();computeRest();
 updateBranches();render();
 const skipped=stats.missingDriver+stats.missingTimes+stats.invalidDates;
 message.textContent="โหลดข้อมูลสำเร็จ: "+records.length+" รายการงาน | "+restRows.length+" รอบพัก | ข้ามแถว "+skipped+" แถว | ไม่มีชื่อ "+stats.missingDriver+" | ไม่มีคู่เวลา "+stats.missingTimes+" | วันที่/เวลาไม่ถูกต้อง "+stats.invalidDates+" | คู่เวลาไม่ครบ "+stats.incompletePairs;
 if(missingHeaders.length)message.textContent+=" | ไม่พบหัวคอลัมน์บางรายการ: "+missingHeaders.join(", ");
+message.textContent+=" | แก้ไขเวลาแล้ว "+records.filter(r=>r.edited).length+" รายการ"+(API_URL?"":" | โหมดเก็บในเบราว์เซอร์ (ยังไม่ได้ตั้งค่า API_URL)")+ovrNote;
 }catch(error){console.error("Dashboard error:",error);message.textContent="เกิดข้อผิดพลาด: "+error.message}
 finally{loading=false;reload.disabled=false}}
 function computeRest(){records.forEach(r=>{delete r.restMs;delete r.restStatus});
@@ -159,10 +162,28 @@ for(let i=0;i<records.length-1;i++){const c=records[i],n=records[i+1];if(c.drive
 const ms=n.start.getTime()-c.end.getTime();if(ms<0)continue;
 const st=ms>=REST_LIMIT_MS?"ผ่าน":"ไม่ผ่าน";c.restMs=ms;c.restStatus=st;
 restRows.push({driver:c.driver,branch:n.branch||c.branch,previousEnd:c.end,nextStart:n.start,ms,status:st})}}
+const API_URL="https://script.google.com/macros/s/AKfycbwfvwpMvzuvHAbaqMsTlurEhp4u8HCEvI5190yHc8J5TyOxhV6fd4WHR7T-_M9YDQQX/exec";   /* วางลิงก์ Web app (ลงท้ายด้วย /exec) จาก Apps Script ที่นี่ */
+const API_TOKEN="PTGLG2026"; /* ต้องตรงกับ TOKEN ใน Apps Script */
 const OVR_KEY="restHoursOverrides.v1";
-function loadOverrides(){try{return JSON.parse(localStorage.getItem(OVR_KEY)||"{}")||{}}catch(e){return{}}}
-function saveOverrides(o){try{localStorage.setItem(OVR_KEY,JSON.stringify(o));return true}catch(e){return false}}
-function applyOverrides(){const o=loadOverrides();
+let overrides={};
+function loadLocal(){try{return JSON.parse(localStorage.getItem(OVR_KEY)||"{}")||{}}catch(e){return{}}}
+function saveLocal(o){try{localStorage.setItem(OVR_KEY,JSON.stringify(o));return true}catch(e){return false}}
+async function refreshOverrides(){
+if(!API_URL){overrides=loadLocal();return}
+const res=await fetch(API_URL+"?token="+encodeURIComponent(API_TOKEN)+"&_="+Date.now(),{cache:"no-store"});
+if(!res.ok)throw new Error("HTTP "+res.status);
+const j=await res.json();if(!j.ok)throw new Error(j.error||"unknown");
+overrides=j.overrides||{}}
+async function persistOverride(r,val){
+if(API_URL){
+const res=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},
+body:JSON.stringify({token:API_TOKEN,action:val?"set":"delete",key:r.key,driver:r.driver,source:r.source,start:val?val.start:null,end:val?val.end:null})});
+if(!res.ok)throw new Error("HTTP "+res.status);
+const j=await res.json();if(!j.ok)throw new Error(j.error||"unknown")}
+else{const o=loadLocal();if(val)o[r.key]=val;else delete o[r.key];
+if(!saveLocal(o))throw new Error("เบราว์เซอร์ไม่อนุญาตให้เก็บข้อมูล")}
+if(val)overrides[r.key]=val;else delete overrides[r.key]}
+function applyOverrides(){const o=overrides;
 records.forEach(r=>{const v=o[r.key];
 if(v&&v.start&&v.end&&v.end>v.start){r.start=new Date(v.start);r.end=new Date(v.end);r.edited=true}else r.edited=false})}
 const pad2=n=>String(n).padStart(2,"0");
@@ -174,16 +195,19 @@ document.getElementById("editStart").value=toInput(r.start);
 document.getElementById("editEnd").value=toInput(r.end);
 document.getElementById("editErr").textContent="";
 document.getElementById("editDlg").showModal()}
-function resetEdit(r){const o=loadOverrides();delete o[r.key];saveOverrides(o);
+async function resetEdit(r){
+try{await persistOverride(r,null)}catch(ex){alert("คืนค่าไม่สำเร็จ: "+ex.message);return}
 r.start=r.origStart;r.end=r.origEnd;r.edited=false;computeRest();render()}
 document.getElementById("editCancel").addEventListener("click",()=>document.getElementById("editDlg").close());
-document.getElementById("editForm").addEventListener("submit",e=>{e.preventDefault();
+document.getElementById("editForm").addEventListener("submit",async e=>{e.preventDefault();
 const err=document.getElementById("editErr"),s=new Date(document.getElementById("editStart").value),en=new Date(document.getElementById("editEnd").value);
 if(!editing)return;
 if(isNaN(s.getTime())||isNaN(en.getTime())){err.textContent="กรุณากรอกวันที่และเวลาให้ครบ";return}
 if(en<=s){err.textContent="เวลาจบต้องหลังเวลาเริ่ม";return}
-const o=loadOverrides();o[editing.key]={start:s.getTime(),end:en.getTime()};
-if(!saveOverrides(o)){err.textContent="บันทึกไม่สำเร็จ เบราว์เซอร์ไม่อนุญาตให้เก็บข้อมูล";return}
+const btn=e.submitter;if(btn)btn.disabled=true;err.textContent="กำลังบันทึก...";
+try{await persistOverride(editing,{start:s.getTime(),end:en.getTime()})}
+catch(ex){err.textContent="บันทึกไม่สำเร็จ: "+ex.message;if(btn)btn.disabled=false;return}
+if(btn)btn.disabled=false;
 editing.start=s;editing.end=en;editing.edited=true;computeRest();render();document.getElementById("editDlg").close()});
 function duration(ms){const mins=Math.floor(ms/60000);return Math.floor(mins/60)+" ชม. "+(mins%60)+" นาที"}
 const dateText=d=>d.toLocaleString("th-TH",{year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false});

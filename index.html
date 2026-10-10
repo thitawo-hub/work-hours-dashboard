@@ -37,7 +37,7 @@ th:first-child,td:first-child,td.l,th.l{text-align:left}
 .tabs a{color:#fff;text-decoration:none;font-size:13px;font-weight:600;padding:6px 16px;border-radius:999px;background:rgba(255,255,255,.12)}
 .tabs a.on{background:#fff;color:var(--g8)}.tabs a:hover:not(.on){background:rgba(255,255,255,.25)}
 </style></head><body>
-<header><nav class="tabs"><a class="on" href="index.html">ภาพรวม</a><a href="rest-hours.html">เวลาพักคนขับ</a></nav><h1>Linde Fleet Dashboard<small>ระยะทาง · จำนวนรถ · อัตรากำลังคน เทียบ Target (รอบ 26–25)</small></h1>
+<header><nav class="tabs"><a class="on" href="index.html">ภาพรวม</a><a href="rest-hours.html">เวลาพัก พขร.</a></nav><h1>Linde Fleet Dashboard<small>ระยะทาง · จำนวนรถ · อัตรากำลังคน เทียบ Target (รอบ 26–25)</small></h1>
 <select id="branch"><option value="">ทุกสาขา</option></select>
 <select id="cycle" title="รอบข้อมูล 26-25"></select><input type="date" id="from"><input type="date" id="to"><button id="reload">รีเฟรช</button></header>
 <div class="page">
@@ -52,7 +52,7 @@ th:first-child,td:first-child,td.l,th.l{text-align:left}
 </div>
 <div class="box"><h2>ระยะทางวิ่งงานประจำวัน : กิโลเมตร (เส้นประ = Target/วัน)</h2><svg id="chart"></svg></div>
 <div class="grid">
-<div class="box"><h2>อัตรากำลังคนและรถขนส่ง เทียบ Target</h2><div class="wrap"><table id="tCrew"></table></div><details style="margin-top:8px;font-size:12px"><summary style="cursor:pointer;color:var(--g8);font-weight:700">ตรวจสอบรายการ LOCO ที่นับ</summary><div id="locoList" style="margin-top:6px;line-height:1.7;max-height:200px;overflow:auto"></div></details><h2 style="margin-top:18px">LOCO แยกสาขา</h2><div class="wrap"><table id="tLoco"></table></div><div id="crewNote" style="font-size:12px;color:var(--mut);margin-top:8px"></div>
+<div class="box"><h2>อัตรากำลังคนและรถขนส่ง เทียบ Target</h2><div class="wrap"><table id="tCrew"></table></div><h2 style="margin-top:18px">LOCO แยกสาขา</h2><div class="wrap"><table id="tLoco"></table></div>
 <h2 style="margin-top:18px">ระยะทางรายคนขับ</h2><div class="wrap"><table id="tDrv"></table></div></div>
 <div class="box"><h2>ประมาณการระยะทางรายคันเทียบเป้า : กิโลเมตร</h2><div class="wrap"><table id="tCar"></table></div></div>
 </div>
@@ -129,7 +129,7 @@ if(tline){const y=H-pb-tline/mx*(H-pb-18);s+=`<line x1="0" x2="${W}" y1="${y}" y
 if(!e.length)s='<text x="10" y="30" font-size="12">ไม่มีข้อมูล LOCO ในช่วงนี้</text>';
 $(id).setAttribute("viewBox",`0 0 ${W} ${H}`);$(id).innerHTML=s}
 const mCars=b=>uniq(MC.filter(x=>!b||x.branch===b).map(x=>x.plate));
-const mDrv=(b,pos)=>{const to=$("to").value;return uniq(MD.filter(x=>(!b||x.branch===b)&&(!pos||(pos==="OIL"?/OIL/i.test(x.pos):x.pos.replace(/\s/g,"").toUpperCase()===pos))&&!(x.leave&&to&&dk(x.leave)<=to)).map(x=>x.name))};
+const mDrv=(b,pos)=>{const to=$("to").value;return uniq(MD.filter(x=>(!b||x.branch===b)&&(!pos||(pos==="OIL"?x.pos.trim().toUpperCase()==="OIL":x.pos.replace(/\s/g,"").toUpperCase()===pos))&&!(x.leave&&to&&dk(x.leave)<=to)).map(x=>x.name))};
 function locoTable(R){const bs=[...new Set(R.map(r=>r.branch))].sort((a,b)=>a.localeCompare(b,"th"));
 const dc=(a,t)=>t==null?"<td>-</td><td>-</td>":`<td>${fmt(t)}</td><td class="${a>=t?"good":"bad"}">${fmt(a-t)}</td>`;
 const row=(n,p,tp,c,tc,tag)=>`<tr><${tag} class="l">${n}</${tag}><${tag}>${fmt(p)}</${tag}>${dc(p,tp)}<${tag}>${fmt(c)}</${tag}>${dc(c,tc)}<${tag}>${c?fmt(p/c,3):"-"}</${tag}></tr>`;
@@ -150,10 +150,7 @@ h+=sec("COCO · พขร. ตำแหน่ง 22W");const co=grp("COCO","22W"
 const po=MD.length?mDrv(b,"OIL"):null;
 if(co.tp!=null){const d=co.p-co.tp-(po||0);h+=`<tr><td class="l">ต้องหา พขร. COCO เพิ่ม<br><small style="color:var(--mut)">Actual − Target − Oil</small></td><td colspan="3" class="${d>=0?"good":"bad"}" style="font-size:15px">${d<0?"ต้องหาเพิ่ม "+fmt(-d)+" คน":"ไม่ต้องหาเพิ่ม (เกิน "+fmt(d)+" คน)"}<br><small style="color:var(--mut);font-weight:400">${fmt(co.p)} − ${fmt(co.tp)} − ${fmt(po||0)} = ${fmt(d)}</small></td></tr>`}
 h+=sec("Oil · พขร. ที่มาช่วยวิ่งงาน COCO")+`<tr><td class="l">พขร. Oil</td><td colspan="3">${po==null?"- (ต้องตั้งค่า Master driver)":fmt(po)+" คน"}</td></tr>`;
-$("tCrew").innerHTML=h;$("crewNote").textContent=(MD.length?"พขร.: นับจาก Master driver ตามตำแหน่ง (22W=COCO, 10W=LOCO, Oil=ช่วยวิ่งงาน COCO) ไม่รวมคนที่ลาออก · ":"พขร.: ยังนับจากข้อมูลวิ่งงาน (ยังไม่ได้ตั้งค่า Master driver) · ")+(MC.length?"รถ COCO: Master car · ":"รถ COCO: ข้อมูลวิ่งงาน · ")+"รถ LOCO: ระยอง = เบอร์หางเมื่อทะเบียนหัวว่าง · สาขาอื่น = ทะเบียนหัว (ข้ามแถวที่ไม่มี)";
-const L=R.filter(r=>r.group==="LOCO"),pm=new Map();L.forEach(r=>{if(r.car)pm.set(r.car,(pm.get(r.car)||0)+1)});
-const mp=new Set(MC.map(x=>x.plate)),ov=[...pm.keys()].filter(k=>mp.has(k)).length;
-$("locoList").innerHTML=`<p>เที่ยว LOCO ${L.length} · เที่ยว LOCO ที่ข้าม (ไม่มีรหัสรถตามกติกา) ${L.filter(r=>!r.car).length} · ทะเบียนซ้ำกับ Master car ${MC.length?ov:"-"} คัน</p><p><b>รถ:</b> ${[...pm].sort((a,b)=>b[1]-a[1]).map(([k,v])=>esc(k)+" ("+v+")").join(", ")||"-"}</p><p><b>คน (จากเที่ยวที่นับ):</b> ${esc([...new Set(L.filter(r=>r.car).flatMap(r=>[r.driver,r.driver2]).filter(Boolean))].join(", "))||"-"}</p>`}
+$("tCrew").innerHTML=h;}
 function carTable(R,days,dim,b){const m=new Map();R.forEach(r=>{if(!r.car)return;const o=m.get(r.car)||{p:r.car,b:r.branch,g:r.group,km:0,n:0};o.km+=r.km;o.n++;m.set(r.car,o)});
 const L=[...m.values()].map(o=>{const t=o.g==="COCO"?tgt("KM","COCO",o.b):null;return{...o,avg:o.km/days,pr:o.km/days*dim,t}}).sort((a,b)=>b.pr-a.pr);
 $("tCar").innerHTML='<tr><th class="l">ทะเบียน</th><th class="l">สาขา</th><th class="l">กลุ่ม</th><th>เที่ยว</th><th>ยอดสะสม</th><th>เฉลี่ย/วัน</th><th>เป้า/คัน</th><th>ประมาณการสิ้นเดือน</th><th>% ของเป้า</th></tr>'+

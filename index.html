@@ -84,7 +84,7 @@ function csv(s){const out=[];let r=[],f="",q=false;for(let i=0;i<s.length;i++){c
 if(q){if(c=='"'){if(s[i+1]=='"'){f+='"';i++}else q=false}else f+=c}
 else if(c=='"')q=true;else if(c==","){r.push(f);f=""}else if(c=="\n"){r.push(f);out.push(r);r=[];f=""}else if(c!="\r")f+=c}
 if(f||r.length){r.push(f);out.push(r)}
-const h=out.shift().map(x=>tx(x).replace(/^\uFEFF/,""));
+const h=out.shift().map(x=>tx(x).replace(/^\uFEFF/,"").replace(/\s+/g," "));
 return out.filter(r=>r.some(v=>tx(v))).map(r=>{const o={};h.forEach((k,i)=>{if(!(k in o))o[k]=r[i]??""});return o})}
 function pdate(v){const s=tx(v);if(!s)return null;let m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
 if(m)return new Date(+m[1]>2400?m[1]-543:m[1],m[2]-1,m[3]);
@@ -92,10 +92,10 @@ m=s.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})$/);
 if(m){let y=+m[3];if(y<100)y+=2000;if(y>2400)y-=543;return new Date(y,m[2]-1,m[1])}return null}
 const dk=d=>d?`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`:"";
 const nm=v=>tx(v).replace(/^(นางสาว|น\.ส\.|นาย|นาง)\s*/,"").replace(/\s+/g," "),pl=v=>tx(v).replace(/\s+/g,"").toUpperCase();
-const cv=(r,ns)=>{for(const n of ns)if(r[n]!==undefined&&tx(r[n])!=="")return num(r[n]);return 0};
+const cv=(r,ns,i)=>{for(const n of ns)if(r[n]!==undefined)return num(r[n]);return num(Object.values(r)[i])};
 function norm(r){const d=pdate(r["ว/ด/ป"]);const type=tx(r["ประเภทรถ"]);
 const o={date:d,k:dk(d),help:/ช่วย/.test(tx(r["สาขา"])),head:pl(r["ทะเบียนหัว"]),tail:pl(r["เบอร์หาง"]),plate:pl(r["ทะเบียนหัว"]),driver:nm(r["ชื่อพขร. (หลัก)"]),driver2:nm(r["ชื่อพขร. (เสริม)"]),
-branch:tx(r["สาขา"])||"ไม่ระบุ",group:type?"COCO":"LOCO",km:num(r["ระยะทางรวม"]),toll:cv(r,["ค่าทางด่วน (บาท)","ค่าทางด่วน"]),hotel:cv(r,["ค่าห้องพัก (บาท)","ค่าห้องพัก"]),travel:cv(r,["ค่าเดินทาง (บาท)","ค่าเดินทาง"])};o.cost=o.toll+o.hotel+o.travel;o.car=o.group==="LOCO"?(/^ระยอง/.test(o.branch)?(o.head?"":o.tail):o.head):o.head;return o}
+branch:tx(r["สาขา"])||"ไม่ระบุ",group:type?"COCO":"LOCO",km:num(r["ระยะทางรวม"]),toll:cv(r,["ค่าทางด่วน (บาท)","ค่าทางด่วน"],9),hotel:cv(r,["ค่าห้องพัก (บาท)","ค่าห้องพัก"],10),travel:cv(r,["ค่าเดินทาง (บาท)","ค่าเดินทาง"],11)};o.cost=o.toll+o.hotel+o.travel;o.car=o.group==="LOCO"?(/^ระยอง/.test(o.branch)?(o.head?"":o.tail):o.head):o.head;return o}
 function normT(r){return{type:tx(r["ประเภท"]),item:tx(r["รายการ"]),group:tx(r["กลุ่มงาน"]),branch:tx(r["สาขา"]),val:num(r["ค่า Target"]),start:pdate(r["เริ่มใช้วันที่"]),end:pdate(r["สิ้นสุดวันที่"])}}
 // Target: CAR รวมสัญญาย่อยของสาขา (ระยองสัญญา 1, 2, 10W) / อื่นๆ ใช้ชื่อสาขาตรงตัว
 function tgt(type,group,branch){const L=targets.filter(t=>t.type===type&&t.group===group);

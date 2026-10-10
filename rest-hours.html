@@ -14,8 +14,9 @@ header h1 small{display:block;font-size:12px;font-weight:400;opacity:.75;margin-
 input,select,button{font:inherit;font-size:13px;padding:8px 11px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)}
 button{background:#fff;color:var(--g8);border:0;font-weight:700;cursor:pointer}button:hover{background:var(--g1)}button:disabled{opacity:.5;cursor:wait}
 .page{max-width:1440px;margin:auto;padding:22px 24px}
-.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+.cards{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-bottom:18px}
 .k{background:#fff;border:1px solid var(--line);border-left:4px solid var(--g7);border-radius:10px;padding:14px 16px;box-shadow:0 1px 2px rgba(15,61,36,.06)}
+.k.bad{border-left-color:var(--red)}.k.bad b{color:var(--red)}
 .k small{display:block;font-size:11.5px;color:var(--mut);font-weight:600}
 .k b{display:block;font-size:26px;margin-top:8px;color:var(--g8);font-variant-numeric:tabular-nums}
 .box{background:#fff;border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin-bottom:18px;box-shadow:0 1px 2px rgba(15,61,36,.06)}
@@ -28,10 +29,11 @@ th{background:var(--g1);color:var(--g8);font-weight:700;font-size:12px;position:
 tbody tr:nth-child(even) td{background:#fafcfb}tr:hover td{background:#f0f6f2!important}
 .pass{color:var(--ok);font-weight:700}.fail{color:var(--red);font-weight:700}
 .warn{background:#fff;color:var(--mut);border:1px solid var(--line);border-left:4px solid var(--g7);padding:9px 14px;border-radius:8px;font-size:12.5px;margin-bottom:16px;line-height:1.8;overflow-wrap:anywhere}
+@media(max-width:1100px){.cards{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:900px){.cards{grid-template-columns:repeat(2,1fr)}.page{padding:14px}header{padding:14px}.controls>*{width:100%}}
 </style></head><body>
 <header><nav class="tabs"><a href="index.html">ภาพรวม</a><a class="on" href="rest-hours.html">เวลาพัก พขร.</a></nav>
-<h1>Driver Rest Hours<small>ตรวจสอบเวลาพักระหว่างงาน — ต้องพักอย่างน้อย 10 ชั่วโมง</small></h1>
+<h1>Driver Rest Hours<small>ตรวจสอบเวลาพักระหว่างงาน (ต้องพักอย่างน้อย 10 ชั่วโมง) และชั่วโมงทำงาน (ต้องไม่เกิน 14 ชั่วโมง)</small></h1>
 <button id="reload" type="button">รีเฟรชข้อมูล</button></header>
 <div class="page">
 <div id="message" class="warn" role="status">กำลังโหลดข้อมูลจาก Google Sheets...</div>
@@ -40,13 +42,22 @@ tbody tr:nth-child(even) td{background:#fafcfb}tr:hover td{background:#f0f6f2!im
 <div class="k"><small>รอบพักผ่าน (≥10 ชม.)</small><b id="passed">0</b></div>
 <div class="k"><small>รอบพักไม่ผ่าน (&lt;10 ชม.)</small><b id="failed">0</b></div>
 <div class="k"><small>อัตราผ่าน</small><b id="rate">0%</b></div>
+<div class="k"><small>งานทั้งหมด</small><b id="jobs">0</b></div>
+<div class="k bad"><small>งานทำเกิน 14 ชม.</small><b id="over">0</b></div>
 </div>
-<div class="box"><h2>รอบพักระหว่างงาน</h2>
+<div class="box"><h2>ตัวกรอง</h2>
 <div class="controls"><input id="search" placeholder="ค้นหาชื่อ พขร.">
-<select id="status"><option value="all">ทุกสถานะ</option><option value="ผ่าน">ผ่าน</option><option value="ไม่ผ่าน">ไม่ผ่าน</option></select>
-<select id="branch"><option value="all">ทุกสาขา</option></select></div>
+<select id="branch"><option value="all">ทุกสาขา</option></select></div></div>
+<div class="box"><h2>รอบพักระหว่างงาน</h2>
+<div class="controls">
+<select id="status"><option value="all">ทุกสถานะ</option><option value="ผ่าน">ผ่าน</option><option value="ไม่ผ่าน">ไม่ผ่าน</option></select></div>
 <div class="wrap"><table><thead><tr><th>พขร.</th><th>สาขา</th><th>จบงานก่อนหน้า</th><th>เริ่มงานถัดไป</th><th>เวลาพัก</th><th>สถานะ</th></tr></thead>
 <tbody id="rows"><tr><td colspan="6">กำลังโหลดข้อมูล...</td></tr></tbody></table></div></div>
+<div class="box"><h2>ชั่วโมงการทำงาน</h2>
+<div class="controls">
+<select id="workStatus"><option value="all">ทุกสถานะ</option><option value="over">เกิน 14 ชม.</option><option value="ok">ไม่เกิน 14 ชม.</option></select></div>
+<div class="wrap"><table><thead><tr><th>พขร.</th><th>สาขา</th><th>แหล่งเวลา</th><th>เริ่มงาน</th><th>จบงาน</th><th>ชั่วโมงทำงาน</th><th>สถานะ</th></tr></thead>
+<tbody id="workRows"><tr><td colspan="7">กำลังโหลดข้อมูล...</td></tr></tbody></table></div></div>
 </div>
 <script>
 "use strict";
@@ -55,6 +66,7 @@ const HEADERS={driver:["ชื่อ พขร","ชื่อพขร","พข�
 selectedStart:["เวลาเริ่มที่เลือก"],selectedEnd:["เวลาจบที่เลือก"],ghStart:["เริ่มงาน GH"],ghEnd:["จบงาน GH"],swStart:["เริ่มงาน SW"],swEnd:["จบงาน SW"],
 famulaStart:["เริ่ม Famula","เริ่มงาน Famula"],famulaEnd:["จบ Famula","จบงาน Famula"]};
 const REST_LIMIT_MS=10*3600*1000;
+const WORK_LIMIT_MS=14*3600*1000;
 let records=[],restRows=[],loading=false;
 function parseCSV(text){const rows=[];let row=[],cell="",quoted=false;text=text.replace(/^\uFEFF/,"");
 for(let i=0;i<text.length;i++){const c=text[i],next=text[i+1];
@@ -132,24 +144,37 @@ finally{loading=false;reload.disabled=false}}
 function duration(ms){const mins=Math.floor(ms/60000);return Math.floor(mins/60)+" ชม. "+(mins%60)+" นาที"}
 const dateText=d=>d.toLocaleString("th-TH",{year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false});
 function updateBranches(){const sel=document.getElementById("branch"),old=sel.value;
-const bs=[...new Set(restRows.map(r=>r.branch).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"th"));
+const bs=[...new Set(records.map(r=>r.branch).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"th"));
 sel.innerHTML="";const all=document.createElement("option");all.value="all";all.textContent="ทุกสาขา";sel.appendChild(all);
 bs.forEach(b=>{const o=document.createElement("option");o.value=b;o.textContent=b;sel.appendChild(o)});
 sel.value=bs.includes(old)?old:"all"}
+function emptyRow(tbody,cols){const tr=document.createElement("tr"),td=document.createElement("td");td.colSpan=cols;td.textContent="ไม่พบข้อมูลที่ตรงกับเงื่อนไข";tr.appendChild(td);tbody.appendChild(tr)}
 function render(){const search=document.getElementById("search").value.trim().toLowerCase(),
-status=document.getElementById("status").value,branch=document.getElementById("branch").value;
+status=document.getElementById("status").value,branch=document.getElementById("branch").value,
+workStatus=document.getElementById("workStatus").value;
 const drivers=new Set(records.map(r=>r.driver)),passed=restRows.filter(r=>r.status==="ผ่าน").length,failed=restRows.filter(r=>r.status==="ไม่ผ่าน").length;
+const overCount=records.filter(r=>r.end-r.start>WORK_LIMIT_MS).length;
 document.getElementById("drivers").textContent=drivers.size;document.getElementById("passed").textContent=passed;document.getElementById("failed").textContent=failed;
 document.getElementById("rate").textContent=(restRows.length?Math.round(passed/restRows.length*100):0)+"%";
+document.getElementById("jobs").textContent=records.length;document.getElementById("over").textContent=overCount;
 const filtered=restRows.filter(r=>r.driver.toLowerCase().includes(search)&&(status==="all"||r.status===status)&&(branch==="all"||r.branch===branch));
 const tbody=document.getElementById("rows");tbody.innerHTML="";
-if(!filtered.length){const tr=document.createElement("tr"),td=document.createElement("td");td.colSpan=6;td.textContent="ไม่พบข้อมูลที่ตรงกับเงื่อนไข";tr.appendChild(td);tbody.appendChild(tr);return}
+if(!filtered.length)emptyRow(tbody,6);
 filtered.forEach(r=>{const tr=document.createElement("tr");
 [r.driver,r.branch||"-",dateText(r.previousEnd),dateText(r.nextStart),duration(r.ms),r.status].forEach((v,i)=>{const td=document.createElement("td");td.textContent=v;if(i===5)td.className=r.status==="ผ่าน"?"pass":"fail";tr.appendChild(td)});
-tbody.appendChild(tr)})}
+tbody.appendChild(tr)});
+const works=records.filter(r=>{const over=(r.end-r.start)>WORK_LIMIT_MS;
+return r.driver.toLowerCase().includes(search)&&(branch==="all"||r.branch===branch)&&(workStatus==="all"||(workStatus==="over"?over:!over))});
+const wbody=document.getElementById("workRows");wbody.innerHTML="";
+if(!works.length)emptyRow(wbody,7);
+works.forEach(r=>{const ms=r.end-r.start,over=ms>WORK_LIMIT_MS,tr=document.createElement("tr");
+[r.driver,r.branch||"-",r.source,dateText(r.start),dateText(r.end),duration(ms),over?"เกิน 14 ชม.":"ปกติ"].forEach((v,i)=>{const td=document.createElement("td");td.textContent=v;
+if(i===5&&over)td.className="fail";if(i===6)td.className=over?"fail":"pass";tr.appendChild(td)});
+wbody.appendChild(tr)})}
 document.getElementById("reload").addEventListener("click",loadData);
 document.getElementById("search").addEventListener("input",render);
 document.getElementById("status").addEventListener("change",render);
+document.getElementById("workStatus").addEventListener("change",render);
 document.getElementById("branch").addEventListener("change",render);
 loadData();
 </script></body></html>

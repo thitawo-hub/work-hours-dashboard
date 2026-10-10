@@ -41,6 +41,9 @@ dialog .actions{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
 dialog button{border:1px solid var(--line);padding:8px 16px}
 dialog button.primary{background:var(--g8);color:#fff;border-color:var(--g8)}dialog button.primary:hover{background:var(--g9)}
 #editErr{min-height:18px;font-size:12.5px;margin-bottom:6px}
+.dt{display:flex;gap:8px}.dt input{width:auto;min-width:0;margin-top:5px}.dt input:first-child{flex:3}.dt input:last-child{flex:2}
+.outline{border:1px solid var(--g7)}
+#listDlg{width:min(980px,95vw)}#listDlg .wrap{max-height:55vh;margin-bottom:12px}
 @media(max-width:1100px){.cards{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:900px){.cards{grid-template-columns:repeat(2,1fr)}.page{padding:14px}header{padding:14px}.controls>*{width:100%}}
 </style></head><body>
@@ -62,16 +65,21 @@ dialog button.primary{background:var(--g8);color:#fff;border-color:var(--g8)}dia
 <select id="branch"><option value="all">ทุกสาขา</option></select>
 <select id="workStatus"><option value="all">ชั่วโมงทำงาน: ทั้งหมด</option><option value="over">เกิน 14 ชม.</option><option value="ok">ไม่เกิน 14 ชม.</option></select>
 <select id="status"><option value="all">เวลาพัก: ทั้งหมด</option><option value="ผ่าน">พักผ่าน</option><option value="ไม่ผ่าน">พักไม่ผ่าน</option></select>
-<select id="sortWork"><option value="default">เรียงลำดับ: ตามชื่อ/เวลา</option><option value="desc">ชั่วโมงทำงาน มาก → น้อย</option><option value="asc">ชั่วโมงทำงาน น้อย → มาก</option></select></div>
+<select id="sortWork"><option value="default">เรียงลำดับ: ตามชื่อ/เวลา</option><option value="desc">ชั่วโมงทำงาน มาก → น้อย</option><option value="asc">ชั่วโมงทำงาน น้อย → มาก</option></select>
+<button type="button" id="viewEdited" class="outline">ดูรายการที่แก้ไข (<span id="editedCount">0</span>)</button></div>
 <div class="wrap"><table><thead><tr><th>พขร.</th><th>สาขา</th><th>แหล่งเวลา</th><th>เริ่มงาน</th><th>จบงาน</th><th id="thWork" style="cursor:pointer" title="คลิกเพื่อเรียงลำดับ">ชั่วโมงทำงาน <span id="sortArrow"></span></th><th>สถานะทำงาน</th><th>พักก่อนงานถัดไป</th><th>สถานะพัก</th><th>จัดการ</th></tr></thead>
 <tbody id="workRows"><tr><td colspan="10">กำลังโหลดข้อมูล...</td></tr></tbody></table></div></div>
 <dialog id="editDlg"><form id="editForm" novalidate>
 <h3 id="editTitle">แก้ไขเวลา</h3><p id="editSub"></p>
-<label>เริ่มงาน<input type="datetime-local" id="editStart" required></label>
-<label>จบงาน<input type="datetime-local" id="editEnd" required></label>
+<label>เริ่มงาน (วว/ดด/ปปปป พ.ศ. · เวลา 24 ชม.)<div class="dt"><input id="editStartDate" inputmode="numeric" placeholder="วว/ดด/ปปปป" maxlength="10" autocomplete="off"><input id="editStartTime" inputmode="numeric" placeholder="ชช:นน" maxlength="5" autocomplete="off"></div></label>
+<label>จบงาน (วว/ดด/ปปปป พ.ศ. · เวลา 24 ชม.)<div class="dt"><input id="editEndDate" inputmode="numeric" placeholder="วว/ดด/ปปปป" maxlength="10" autocomplete="off"><input id="editEndTime" inputmode="numeric" placeholder="ชช:นน" maxlength="5" autocomplete="off"></div></label>
 <div id="editErr" class="fail" role="alert"></div>
 <div class="actions"><button type="button" id="editCancel">ยกเลิก</button><button type="submit" class="primary">บันทึก</button></div>
 </form></dialog>
+<dialog id="listDlg"><h3>รายการที่แก้ไขเวลา</h3><p>เปรียบเทียบเวลาเดิมจากชีตกับเวลาที่แก้ไข กด "คืนค่า" เพื่อกลับไปใช้เวลาเดิม</p>
+<div class="wrap"><table><thead><tr><th>พขร.</th><th>สาขา</th><th>แหล่งเวลา</th><th>เวลาเดิม</th><th>เวลาที่แก้ไข</th><th>ชั่วโมงทำงานใหม่</th><th>จัดการ</th></tr></thead>
+<tbody id="editedRows"></tbody></table></div>
+<div class="actions"><button type="button" id="listClose">ปิด</button></div></dialog>
 </div>
 <script>
 "use strict";
@@ -188,12 +196,22 @@ function applyOverrides(){const o=overrides;
 records.forEach(r=>{const v=o[r.key];
 if(v&&v.start&&v.end&&v.end>v.start){r.start=new Date(v.start);r.end=new Date(v.end);r.edited=true}else r.edited=false})}
 const pad2=n=>String(n).padStart(2,"0");
-const toInput=d=>d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate())+"T"+pad2(d.getHours())+":"+pad2(d.getMinutes());
+const fmtDate=d=>pad2(d.getDate())+"/"+pad2(d.getMonth()+1)+"/"+(d.getFullYear()+543);
+const fmtTime=d=>pad2(d.getHours())+":"+pad2(d.getMinutes());
+function readDT(prefix){const ds=document.getElementById(prefix+"Date").value.trim(),ts=document.getElementById(prefix+"Time").value.trim();
+const dm=ds.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/),tm=ts.match(/^(\d{1,2}):(\d{2})$/);
+if(!dm||!tm)return null;return makeDate(+dm[3],+dm[2],+dm[1],+tm[1],+tm[2])}
+function maskDate(el){const d=el.value.replace(/\D/g,"").slice(0,8);let o=d.slice(0,2);if(d.length>2)o+="/"+d.slice(2,4);if(d.length>4)o+="/"+d.slice(4);el.value=o}
+function maskTime(el){const d=el.value.replace(/\D/g,"").slice(0,4);let o=d.slice(0,2);if(d.length>2)o+=":"+d.slice(2);el.value=o}
+["editStartDate","editEndDate"].forEach(id=>document.getElementById(id).addEventListener("input",e=>maskDate(e.target)));
+["editStartTime","editEndTime"].forEach(id=>document.getElementById(id).addEventListener("input",e=>maskTime(e.target)));
 let editing=null;
 function openEdit(r){editing=r;
 document.getElementById("editSub").textContent=r.driver+" · "+(r.branch||"-")+" · "+r.source;
-document.getElementById("editStart").value=toInput(r.start);
-document.getElementById("editEnd").value=toInput(r.end);
+document.getElementById("editStartDate").value=fmtDate(r.start);
+document.getElementById("editStartTime").value=fmtTime(r.start);
+document.getElementById("editEndDate").value=fmtDate(r.end);
+document.getElementById("editEndTime").value=fmtTime(r.end);
 document.getElementById("editErr").textContent="";
 document.getElementById("editDlg").showModal()}
 async function resetEdit(r){
@@ -201,9 +219,9 @@ try{await persistOverride(r,null)}catch(ex){alert("คืนค่าไม่�
 r.start=r.origStart;r.end=r.origEnd;r.edited=false;computeRest();render()}
 document.getElementById("editCancel").addEventListener("click",()=>document.getElementById("editDlg").close());
 document.getElementById("editForm").addEventListener("submit",async e=>{e.preventDefault();
-const err=document.getElementById("editErr"),s=new Date(document.getElementById("editStart").value),en=new Date(document.getElementById("editEnd").value);
+const err=document.getElementById("editErr"),s=readDT("editStart"),en=readDT("editEnd");
 if(!editing)return;
-if(isNaN(s.getTime())||isNaN(en.getTime())){err.textContent="กรุณากรอกวันที่และเวลาให้ครบ";return}
+if(!s||!en){err.textContent="รูปแบบไม่ถูกต้อง กรุณากรอกวันที่ วว/ดด/ปปปป และเวลา ชช:นน (24 ชั่วโมง)";return}
 if(en<=s){err.textContent="เวลาจบต้องหลังเวลาเริ่ม";return}
 const btn=e.submitter;if(btn)btn.disabled=true;err.textContent="กำลังบันทึก...";
 try{await persistOverride(editing,{start:s.getTime(),end:en.getTime()})}
@@ -211,7 +229,7 @@ catch(ex){err.textContent="บันทึกไม่สำเร็จ: "+ex.m
 if(btn)btn.disabled=false;
 editing.start=s;editing.end=en;editing.edited=true;computeRest();render();document.getElementById("editDlg").close()});
 function duration(ms){const mins=Math.floor(ms/60000);return Math.floor(mins/60)+" ชม. "+(mins%60)+" นาที"}
-const dateText=d=>d.toLocaleString("th-TH",{year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false});
+const dateText=d=>fmtDate(d)+" "+fmtTime(d);
 function updateBranches(){const sel=document.getElementById("branch"),old=sel.value;
 const bs=[...new Set(records.map(r=>r.branch).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"th"));
 sel.innerHTML="";const all=document.createElement("option");all.value="all";all.textContent="ทุกสาขา";sel.appendChild(all);
@@ -226,6 +244,7 @@ const overCount=records.filter(r=>r.end-r.start>WORK_LIMIT_MS).length;
 document.getElementById("drivers").textContent=drivers.size;document.getElementById("passed").textContent=passed;document.getElementById("failed").textContent=failed;
 document.getElementById("rate").textContent=(restRows.length?Math.round(passed/restRows.length*100):0)+"%";
 document.getElementById("jobs").textContent=records.length;document.getElementById("over").textContent=overCount;
+document.getElementById("editedCount").textContent=records.filter(r=>r.edited).length;
 const works=records.filter(r=>{const over=(r.end-r.start)>WORK_LIMIT_MS;
 return r.driver.toLowerCase().includes(search)&&(branch==="all"||r.branch===branch)
 &&(workStatus==="all"||(workStatus==="over"?over:!over))&&(status==="all"||r.restStatus===status)});
@@ -254,6 +273,15 @@ document.getElementById("search").addEventListener("input",render);
 document.getElementById("status").addEventListener("change",render);
 document.getElementById("workStatus").addEventListener("change",render);
 document.getElementById("sortWork").addEventListener("change",render);
+function renderEditedList(){const tb=document.getElementById("editedRows");tb.innerHTML="";
+const list=records.filter(r=>r.edited);
+if(!list.length){emptyRow(tb,7);tb.querySelector("td").textContent="ยังไม่มีรายการที่แก้ไข";return}
+list.forEach(r=>{const tr=document.createElement("tr");
+[r.driver,r.branch||"-",r.source,dateText(r.origStart)+" – "+dateText(r.origEnd),dateText(r.start)+" – "+dateText(r.end),duration(r.end-r.start)].forEach(v=>{const td=document.createElement("td");td.textContent=v;tr.appendChild(td)});
+const act=document.createElement("td"),b=document.createElement("button");b.type="button";b.className="mini";b.textContent="คืนค่า";
+b.addEventListener("click",async()=>{await resetEdit(r);renderEditedList()});act.appendChild(b);tr.appendChild(act);tb.appendChild(tr)})}
+document.getElementById("viewEdited").addEventListener("click",()=>{renderEditedList();document.getElementById("listDlg").showModal()});
+document.getElementById("listClose").addEventListener("click",()=>document.getElementById("listDlg").close());
 document.getElementById("thWork").addEventListener("click",()=>{const s=document.getElementById("sortWork");
 s.value=s.value==="default"?"desc":s.value==="desc"?"asc":"default";render()});
 document.getElementById("branch").addEventListener("change",render);

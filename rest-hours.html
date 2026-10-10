@@ -29,6 +29,18 @@ th{background:var(--g1);color:var(--g8);font-weight:700;font-size:12px;position:
 tbody tr:nth-child(even) td{background:#fafcfb}tr:hover td{background:#f0f6f2!important}
 .pass{color:var(--ok);font-weight:700}.fail{color:var(--red);font-weight:700}
 .warn{background:#fff;color:var(--mut);border:1px solid var(--line);border-left:4px solid var(--g7);padding:9px 14px;border-radius:8px;font-size:12.5px;margin-bottom:16px;line-height:1.8;overflow-wrap:anywhere}
+.mini{padding:4px 10px;font-size:12px;border:1px solid var(--line);margin-right:6px}
+.tag{display:inline-block;font-size:11px;font-weight:700;color:#92400e;background:#fef3c7;border-radius:999px;padding:2px 8px;margin-right:6px}
+dialog{border:0;border-radius:12px;padding:22px 24px;width:min(420px,92vw);box-shadow:0 12px 40px rgba(15,61,36,.35);font-family:inherit;color:var(--ink)}
+dialog::backdrop{background:rgba(15,35,26,.45)}
+dialog h3{margin:0 0 4px;font-size:16px;color:var(--g8)}
+dialog p{margin:0 0 14px;font-size:12.5px;color:var(--mut)}
+dialog label{display:block;font-size:12.5px;font-weight:600;color:var(--mut);margin-bottom:12px}
+dialog input{display:block;width:100%;margin-top:5px}
+dialog .actions{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
+dialog button{border:1px solid var(--line);padding:8px 16px}
+dialog button.primary{background:var(--g8);color:#fff;border-color:var(--g8)}dialog button.primary:hover{background:var(--g9)}
+#editErr{min-height:18px;font-size:12.5px;margin-bottom:6px}
 @media(max-width:1100px){.cards{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:900px){.cards{grid-template-columns:repeat(2,1fr)}.page{padding:14px}header{padding:14px}.controls>*{width:100%}}
 </style></head><body>
@@ -50,8 +62,15 @@ tbody tr:nth-child(even) td{background:#fafcfb}tr:hover td{background:#f0f6f2!im
 <select id="branch"><option value="all">ทุกสาขา</option></select>
 <select id="workStatus"><option value="all">ชั่วโมงทำงาน: ทั้งหมด</option><option value="over">เกิน 14 ชม.</option><option value="ok">ไม่เกิน 14 ชม.</option></select>
 <select id="status"><option value="all">เวลาพัก: ทั้งหมด</option><option value="ผ่าน">พักผ่าน</option><option value="ไม่ผ่าน">พักไม่ผ่าน</option></select></div>
-<div class="wrap"><table><thead><tr><th>พขร.</th><th>สาขา</th><th>แหล่งเวลา</th><th>เริ่มงาน</th><th>จบงาน</th><th>ชั่วโมงทำงาน</th><th>สถานะทำงาน</th><th>พักก่อนงานถัดไป</th><th>สถานะพัก</th></tr></thead>
-<tbody id="workRows"><tr><td colspan="9">กำลังโหลดข้อมูล...</td></tr></tbody></table></div></div>
+<div class="wrap"><table><thead><tr><th>พขร.</th><th>สาขา</th><th>แหล่งเวลา</th><th>เริ่มงาน</th><th>จบงาน</th><th>ชั่วโมงทำงาน</th><th>สถานะทำงาน</th><th>พักก่อนงานถัดไป</th><th>สถานะพัก</th><th>จัดการ</th></tr></thead>
+<tbody id="workRows"><tr><td colspan="10">กำลังโหลดข้อมูล...</td></tr></tbody></table></div></div>
+<dialog id="editDlg"><form id="editForm" novalidate>
+<h3 id="editTitle">แก้ไขเวลา</h3><p id="editSub"></p>
+<label>เริ่มงาน<input type="datetime-local" id="editStart" required></label>
+<label>จบงาน<input type="datetime-local" id="editEnd" required></label>
+<div id="editErr" class="fail" role="alert"></div>
+<div class="actions"><button type="button" id="editCancel">ยกเลิก</button><button type="submit" class="primary">บันทึก</button></div>
+</form></dialog>
 </div>
 <script>
 "use strict";
@@ -124,18 +143,48 @@ const missingHeaders=required.filter(it=>!it.aliases.some(a=>columns.has(normali
 if(missingHeaders.includes("ชื่อ พขร"))throw new Error("ไม่พบหัวคอลัมน์ชื่อ พขร กรุณาตรวจสอบชื่อหัวตาราง");
 const stats={missingDriver:0,missingTimes:0,incompletePairs:0,invalidDates:0},nr=[];
 data.slice(1).forEach((row,i)=>nr.push(...buildRecords(row,columns,i+2,stats)));
-records=nr;records.sort((a,b)=>a.driver.localeCompare(b.driver,"th")||a.start-b.start);
-restRows=[];
-for(let i=0;i<records.length-1;i++){const c=records[i],n=records[i+1];if(c.driver!==n.driver)continue;
-const ms=n.start.getTime()-c.end.getTime();if(ms<0)continue;
-const st=ms>=REST_LIMIT_MS?"ผ่าน":"ไม่ผ่าน";c.restMs=ms;c.restStatus=st;
-restRows.push({driver:c.driver,branch:n.branch||c.branch,previousEnd:c.end,nextStart:n.start,ms,status:st})}
+records=nr;
+records.forEach(r=>{r.origStart=r.start;r.origEnd=r.end;r.key=[r.driver,r.source,r.origStart.getTime(),r.origEnd.getTime()].join("|")});
+applyOverrides();computeRest();
 updateBranches();render();
 const skipped=stats.missingDriver+stats.missingTimes+stats.invalidDates;
 message.textContent="โหลดข้อมูลสำเร็จ: "+records.length+" รายการงาน | "+restRows.length+" รอบพัก | ข้ามแถว "+skipped+" แถว | ไม่มีชื่อ "+stats.missingDriver+" | ไม่มีคู่เวลา "+stats.missingTimes+" | วันที่/เวลาไม่ถูกต้อง "+stats.invalidDates+" | คู่เวลาไม่ครบ "+stats.incompletePairs;
 if(missingHeaders.length)message.textContent+=" | ไม่พบหัวคอลัมน์บางรายการ: "+missingHeaders.join(", ");
 }catch(error){console.error("Dashboard error:",error);message.textContent="เกิดข้อผิดพลาด: "+error.message}
 finally{loading=false;reload.disabled=false}}
+function computeRest(){records.forEach(r=>{delete r.restMs;delete r.restStatus});
+records.sort((a,b)=>a.driver.localeCompare(b.driver,"th")||a.start-b.start);
+restRows=[];
+for(let i=0;i<records.length-1;i++){const c=records[i],n=records[i+1];if(c.driver!==n.driver)continue;
+const ms=n.start.getTime()-c.end.getTime();if(ms<0)continue;
+const st=ms>=REST_LIMIT_MS?"ผ่าน":"ไม่ผ่าน";c.restMs=ms;c.restStatus=st;
+restRows.push({driver:c.driver,branch:n.branch||c.branch,previousEnd:c.end,nextStart:n.start,ms,status:st})}}
+const OVR_KEY="restHoursOverrides.v1";
+function loadOverrides(){try{return JSON.parse(localStorage.getItem(OVR_KEY)||"{}")||{}}catch(e){return{}}}
+function saveOverrides(o){try{localStorage.setItem(OVR_KEY,JSON.stringify(o));return true}catch(e){return false}}
+function applyOverrides(){const o=loadOverrides();
+records.forEach(r=>{const v=o[r.key];
+if(v&&v.start&&v.end&&v.end>v.start){r.start=new Date(v.start);r.end=new Date(v.end);r.edited=true}else r.edited=false})}
+const pad2=n=>String(n).padStart(2,"0");
+const toInput=d=>d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate())+"T"+pad2(d.getHours())+":"+pad2(d.getMinutes());
+let editing=null;
+function openEdit(r){editing=r;
+document.getElementById("editSub").textContent=r.driver+" · "+(r.branch||"-")+" · "+r.source;
+document.getElementById("editStart").value=toInput(r.start);
+document.getElementById("editEnd").value=toInput(r.end);
+document.getElementById("editErr").textContent="";
+document.getElementById("editDlg").showModal()}
+function resetEdit(r){const o=loadOverrides();delete o[r.key];saveOverrides(o);
+r.start=r.origStart;r.end=r.origEnd;r.edited=false;computeRest();render()}
+document.getElementById("editCancel").addEventListener("click",()=>document.getElementById("editDlg").close());
+document.getElementById("editForm").addEventListener("submit",e=>{e.preventDefault();
+const err=document.getElementById("editErr"),s=new Date(document.getElementById("editStart").value),en=new Date(document.getElementById("editEnd").value);
+if(!editing)return;
+if(isNaN(s.getTime())||isNaN(en.getTime())){err.textContent="กรุณากรอกวันที่และเวลาให้ครบ";return}
+if(en<=s){err.textContent="เวลาจบต้องหลังเวลาเริ่ม";return}
+const o=loadOverrides();o[editing.key]={start:s.getTime(),end:en.getTime()};
+if(!saveOverrides(o)){err.textContent="บันทึกไม่สำเร็จ เบราว์เซอร์ไม่อนุญาตให้เก็บข้อมูล";return}
+editing.start=s;editing.end=en;editing.edited=true;computeRest();render();document.getElementById("editDlg").close()});
 function duration(ms){const mins=Math.floor(ms/60000);return Math.floor(mins/60)+" ชม. "+(mins%60)+" นาที"}
 const dateText=d=>d.toLocaleString("th-TH",{year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false});
 function updateBranches(){const sel=document.getElementById("branch"),old=sel.value;
@@ -156,7 +205,7 @@ const works=records.filter(r=>{const over=(r.end-r.start)>WORK_LIMIT_MS;
 return r.driver.toLowerCase().includes(search)&&(branch==="all"||r.branch===branch)
 &&(workStatus==="all"||(workStatus==="over"?over:!over))&&(status==="all"||r.restStatus===status)});
 const wbody=document.getElementById("workRows");wbody.innerHTML="";
-if(!works.length)emptyRow(wbody,9);
+if(!works.length)emptyRow(wbody,10);
 works.forEach(r=>{const ms=r.end-r.start,over=ms>WORK_LIMIT_MS,tr=document.createElement("tr"),hasRest=r.restMs!==undefined;
 [r.driver,r.branch||"-",r.source,dateText(r.start),dateText(r.end),duration(ms),over?"เกิน 14 ชม.":"ปกติ",
 hasRest?duration(r.restMs):"-",hasRest?r.restStatus:"-"].forEach((v,i)=>{const td=document.createElement("td");td.textContent=v;
@@ -165,6 +214,11 @@ if(i===6)td.className=over?"fail":"pass";
 if(i===7&&hasRest&&r.restStatus==="ไม่ผ่าน")td.className="fail";
 if(i===8&&hasRest)td.className=r.restStatus==="ผ่าน"?"pass":"fail";
 tr.appendChild(td)});
+const act=document.createElement("td");
+const eb=document.createElement("button");eb.type="button";eb.className="mini";eb.textContent="แก้ไข";eb.addEventListener("click",()=>openEdit(r));act.appendChild(eb);
+if(r.edited){const tag=document.createElement("span");tag.className="tag";tag.textContent="แก้ไขแล้ว";act.appendChild(tag);
+const rb=document.createElement("button");rb.type="button";rb.className="mini";rb.textContent="คืนค่า";rb.addEventListener("click",()=>resetEdit(r));act.appendChild(rb)}
+tr.appendChild(act);
 wbody.appendChild(tr)})}
 document.getElementById("reload").addEventListener("click",loadData);
 document.getElementById("search").addEventListener("input",render);

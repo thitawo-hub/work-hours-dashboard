@@ -87,7 +87,7 @@ dialog button.primary{background:var(--g8);color:#fff;border-color:var(--g8)}dia
 <div class="controls"><select id="logType"><option value="invalid">วันที่/เวลาไม่ถูกต้อง</option><option value="missing">ไม่มีคู่เวลาเริ่ม/จบ</option><option value="incomplete">คู่เวลาไม่ครบ</option><option value="nodriver">ไม่มีชื่อ พขร.</option><option value="all">ทุกประเภท</option></select>
 <input id="logSearch" placeholder="ค้นหาชื่อ พขร. หรือเลขแถว" autocomplete="off">
 <button type="button" id="logDownload" class="outline">ดาวน์โหลด CSV</button><span id="logInfo"></span></div>
-<div class="wrap"><table><thead><tr><th>แถวในชีต</th><th>พขร.</th><th>สาขา</th><th>Date (ค่าเดิม)</th><th>แหล่งเวลา</th><th>เวลาเริ่ม (ค่าเดิม)</th><th>เวลาจบ (ค่าเดิม)</th><th>สาเหตุ</th></tr></thead>
+<div class="wrap"><table><thead><tr><th>แถวในชีต</th><th>พขร.</th><th>สาขา</th><th>Date (ค่าเดิม)</th><th>แหล่งเวลา</th><th>เวลาเริ่ม (ค่าเดิม)</th><th>เวลาจบ (ค่าเดิม)</th><th>สาเหตุ</th><th>จัดการ</th></tr></thead>
 <tbody id="logRows"></tbody></table></div>
 <div class="actions"><button type="button" id="logClose">ปิด</button></div></dialog>
 </div>
@@ -135,7 +135,8 @@ if(parseTime(raw)&&!parseDate(dateRaw))return"ช่อง Date ว่างห�
 return"อ่านค่าไม่ได้ (รูปแบบวันที่/เวลาไม่ถูกต้อง)"}
 function buildRecords(row,cols,rowNumber,stats){
 const driver=getValue(row,cols,HEADERS.driver),branch=getValue(row,cols,HEADERS.branch),dateRaw=getValue(row,cols,HEADERS.date);
-const addLog=(type,reason,source,startRaw,endRaw)=>stats.log.push({row:rowNumber,type,driver,branch,dateRaw,source:source||"",startRaw:startRaw||"",endRaw:endRaw||"",reason});
+const addLog=(type,reason,source,startRaw,endRaw)=>stats.log.push({row:rowNumber,type,driver,branch,dateRaw,source:source||"",startRaw:startRaw||"",endRaw:endRaw||"",reason,
+key:(type==="invalid"||type==="incomplete")?["x",driver,source||"",dateRaw,startRaw||"",endRaw||""].join("|"):""});
 if(!driver){stats.missingDriver++;addLog("nodriver","ไม่มีชื่อ พขร.");return[]}
 const ss=getValue(row,cols,HEADERS.selectedStart),se=getValue(row,cols,HEADERS.selectedEnd),pairs=[];
 if(ss&&se)pairs.push({label:"เวลาที่เลือก",startRaw:ss,endRaw:se});
@@ -173,7 +174,7 @@ records=nr;
 records.forEach(r=>{r.origStart=r.start;r.origEnd=r.end;r.key=[r.driver,r.source,r.origStart.getTime(),r.origEnd.getTime()].join("|")});
 let ovrNote="";
 try{await refreshOverrides()}catch(e){overrides=loadLocal();ovrNote=" | โหลดค่าที่แก้ไขจากชีตไม่สำเร็จ ("+e.message+") ใช้ค่าในเบราว์เซอร์แทน"}
-applyOverrides();computeRest();
+applyManual();applyOverrides();computeRest();
 updateBranches();render();
 const skipped=stats.missingDriver+stats.missingTimes+stats.invalidDates;
 message.textContent="โหลดข้อมูลสำเร็จ: "+records.length+" รายการงาน | "+restRows.length+" รอบพัก | ข้ามแถว "+skipped+" แถว | ไม่มีชื่อ "+stats.missingDriver+" | ไม่มีคู่เวลา "+stats.missingTimes+" | วันที่/เวลาไม่ถูกต้อง "+stats.invalidDates+" | คู่เวลาไม่ครบ "+stats.incompletePairs;
@@ -209,6 +210,10 @@ const j=await res.json();if(!j.ok)throw new Error(j.error||"unknown")}
 else{const o=loadLocal();if(val)o[r.key]=val;else delete o[r.key];
 if(!saveLocal(o))throw new Error("เบราว์เซอร์ไม่อนุญาตให้เก็บข้อมูล")}
 if(val)overrides[r.key]=val;else delete overrides[r.key]}
+function applyManual(){logRows.forEach(l=>{l.fixed=false;if(!l.key)return;const v=overrides[l.key];
+if(v&&v.start&&v.end&&v.end>v.start){l.fixed=true;
+records.push({driver:l.driver,branch:l.branch,start:new Date(v.start),end:new Date(v.end),source:l.source||"แก้ไขเอง",rowNumber:l.row,
+manual:true,key:l.key,origStart:new Date(v.start),origEnd:new Date(v.end),manualOrig:(l.startRaw||"-")+" – "+(l.endRaw||"-")})}})}
 function applyOverrides(){const o=overrides;
 records.forEach(r=>{const v=o[r.key];
 if(v&&v.start&&v.end&&v.end>v.start){r.start=new Date(v.start);r.end=new Date(v.end);r.edited=true}else r.edited=false})}
@@ -223,17 +228,20 @@ function maskTime(el){const d=el.value.replace(/\D/g,"").slice(0,4);let o=d.slic
 ["editStartDate","editEndDate"].forEach(id=>document.getElementById(id).addEventListener("input",e=>maskDate(e.target)));
 ["editStartTime","editEndTime"].forEach(id=>document.getElementById(id).addEventListener("input",e=>maskTime(e.target)));
 let editing=null;
-function openEdit(r){editing=r;
-document.getElementById("editSub").textContent=r.driver+" · "+(r.branch||"-")+" · "+r.source;
-document.getElementById("editStartDate").value=fmtDate(r.start);
-document.getElementById("editStartTime").value=fmtTime(r.start);
-document.getElementById("editEndDate").value=fmtDate(r.end);
-document.getElementById("editEndTime").value=fmtTime(r.end);
+function openEdit(r,presetDate){editing=r;
+document.getElementById("editSub").textContent=r.driver+" · "+(r.branch||"-")+" · "+r.source+(r.manual?" · ค่าเดิมในชีต: "+r.manualOrig:"");
+const sd=r.start||presetDate||null,ed=r.end||presetDate||null;
+document.getElementById("editStartDate").value=sd?fmtDate(sd):"";
+document.getElementById("editStartTime").value=r.start?fmtTime(r.start):"";
+document.getElementById("editEndDate").value=ed?fmtDate(ed):"";
+document.getElementById("editEndTime").value=r.end?fmtTime(r.end):"";
 document.getElementById("editErr").textContent="";
 document.getElementById("editDlg").showModal()}
 async function resetEdit(r){
 try{await persistOverride(r,null)}catch(ex){alert("คืนค่าไม่สำเร็จ: "+ex.message);return}
-r.start=r.origStart;r.end=r.origEnd;r.edited=false;computeRest();render()}
+if(r.manual){const ix=records.indexOf(r);if(ix>=0)records.splice(ix,1);const l=logRows.find(x=>x.key===r.key);if(l)l.fixed=false}
+else{r.start=r.origStart;r.end=r.origEnd;r.edited=false}
+computeRest();render()}
 document.getElementById("editCancel").addEventListener("click",()=>document.getElementById("editDlg").close());
 document.getElementById("editForm").addEventListener("submit",async e=>{e.preventDefault();
 const err=document.getElementById("editErr"),s=readDT("editStart"),en=readDT("editEnd");
@@ -244,7 +252,9 @@ const btn=e.submitter;if(btn)btn.disabled=true;err.textContent="กำลัง�
 try{await persistOverride(editing,{start:s.getTime(),end:en.getTime()})}
 catch(ex){err.textContent="บันทึกไม่สำเร็จ: "+ex.message;if(btn)btn.disabled=false;return}
 if(btn)btn.disabled=false;
-editing.start=s;editing.end=en;editing.edited=true;computeRest();render();document.getElementById("editDlg").close()});
+editing.start=s;editing.end=en;editing.edited=true;
+if(editing.manual&&!records.includes(editing)){editing.origStart=s;editing.origEnd=en;records.push(editing);const l=logRows.find(x=>x.key===editing.key);if(l)l.fixed=true}
+computeRest();render();if(document.getElementById("logDlg").open)renderLog();document.getElementById("editDlg").close()});
 function duration(ms){const mins=Math.floor(ms/60000);return Math.floor(mins/60)+" ชม. "+(mins%60)+" นาที"}
 const dateText=d=>fmtDate(d)+" "+fmtTime(d);
 function updateBranches(){const sel=document.getElementById("branch"),old=sel.value;
@@ -262,7 +272,7 @@ document.getElementById("drivers").textContent=drivers.size;document.getElementB
 document.getElementById("rate").textContent=(restRows.length?Math.round(passed/restRows.length*100):0)+"%";
 document.getElementById("jobs").textContent=records.length;document.getElementById("over").textContent=overCount;
 document.getElementById("editedCount").textContent=records.filter(r=>r.edited).length;
-document.getElementById("logCount").textContent=logRows.filter(l=>l.type==="invalid").length;
+document.getElementById("logCount").textContent=logRows.filter(l=>l.type==="invalid"&&!l.fixed).length;
 const works=records.filter(r=>{const over=(r.end-r.start)>WORK_LIMIT_MS;
 return r.driver.toLowerCase().includes(search)&&(branch==="all"||r.branch===branch)
 &&(workStatus==="all"||(workStatus==="over"?over:!over))&&(status==="all"||r.restStatus===status)});
@@ -295,7 +305,7 @@ function renderEditedList(){const tb=document.getElementById("editedRows");tb.in
 const list=records.filter(r=>r.edited);
 if(!list.length){emptyRow(tb,7);tb.querySelector("td").textContent="ยังไม่มีรายการที่แก้ไข";return}
 list.forEach(r=>{const tr=document.createElement("tr");
-[r.driver,r.branch||"-",r.source,dateText(r.origStart)+" – "+dateText(r.origEnd),dateText(r.start)+" – "+dateText(r.end),duration(r.end-r.start)].forEach(v=>{const td=document.createElement("td");td.textContent=v;tr.appendChild(td)});
+[r.driver,r.branch||"-",r.source,r.manual?"(อ่านจากชีตไม่ได้) "+r.manualOrig:dateText(r.origStart)+" – "+dateText(r.origEnd),dateText(r.start)+" – "+dateText(r.end),duration(r.end-r.start)].forEach(v=>{const td=document.createElement("td");td.textContent=v;tr.appendChild(td)});
 const act=document.createElement("td"),b=document.createElement("button");b.type="button";b.className="mini";b.textContent="คืนค่า";
 b.addEventListener("click",async()=>{await resetEdit(r);renderEditedList()});act.appendChild(b);tr.appendChild(act);tb.appendChild(tr)})}
 document.getElementById("viewEdited").addEventListener("click",()=>{renderEditedList();document.getElementById("listDlg").showModal()});
@@ -305,14 +315,25 @@ s.value=s.value==="default"?"desc":s.value==="desc"?"asc":"default";render()});
 document.getElementById("branch").addEventListener("change",render);
 const LOG_TYPES={invalid:"วันที่/เวลาไม่ถูกต้อง",missing:"ไม่มีคู่เวลาเริ่ม/จบ",incomplete:"คู่เวลาไม่ครบ",nodriver:"ไม่มีชื่อ พขร."};
 function filteredLog(){const t=document.getElementById("logType").value,q=document.getElementById("logSearch").value.trim().toLowerCase();
-return logRows.filter(l=>(t==="all"||l.type===t)&&(!q||l.driver.toLowerCase().includes(q)||String(l.row)===q))}
+const fixedRows=new Set(logRows.filter(l=>l.fixed).map(l=>l.row));
+return logRows.filter(l=>!(l.type==="missing"&&fixedRows.has(l.row))&&(t==="all"||l.type===t)&&(!q||l.driver.toLowerCase().includes(q)||String(l.row)===q))}
 function renderLog(){const tb=document.getElementById("logRows");tb.innerHTML="";const list=filteredLog();
 document.getElementById("logInfo").textContent="แสดง "+list.length+" จากทั้งหมด "+logRows.length+" รายการ";
-if(!list.length){emptyRow(tb,8);tb.querySelector("td").textContent="ไม่พบรายการ";return}
-list.forEach(l=>{const tr=document.createElement("tr");
-[l.row,l.driver||"-",l.branch||"-",l.dateRaw||"-",l.source||"-",l.startRaw||"-",l.endRaw||"-",l.reason].forEach((v,i)=>{const td=document.createElement("td");td.textContent=v;
-if(i===7)td.className=l.type==="invalid"?"reason fail":"reason";tr.appendChild(td)});
-tb.appendChild(tr)})}
+if(!list.length){emptyRow(tb,9);tb.querySelector("td").textContent="ไม่พบรายการ";return}
+list.forEach(l=>{const tr=document.createElement("tr"),rec=l.fixed?records.find(r=>r.manual&&r.key===l.key):null;
+const reason=rec?"แก้ไขแล้ว: "+dateText(rec.start)+" – "+dateText(rec.end):l.reason;
+[l.row,l.driver||"-",l.branch||"-",l.dateRaw||"-",l.source||"-",l.startRaw||"-",l.endRaw||"-",reason].forEach((v,i)=>{const td=document.createElement("td");td.textContent=v;
+if(i===7)td.className=rec?"reason pass":l.type==="invalid"?"reason fail":"reason";tr.appendChild(td)});
+const act=document.createElement("td");
+if(l.key){const b=document.createElement("button");b.type="button";b.className="mini";
+if(rec){b.textContent="แก้ไขอีกครั้ง";b.addEventListener("click",()=>openEdit(rec));act.appendChild(b);
+const rb=document.createElement("button");rb.type="button";rb.className="mini";rb.textContent="คืนค่า";
+rb.addEventListener("click",async()=>{await resetEdit(rec);renderLog()});act.appendChild(rb)}
+else{b.textContent="แก้ไข";b.addEventListener("click",()=>openManual(l));act.appendChild(b)}}
+tr.appendChild(act);tb.appendChild(tr)})}
+function openManual(l){const rec={driver:l.driver,branch:l.branch,source:l.source||"แก้ไขเอง",key:l.key,rowNumber:l.row,manual:true,
+manualOrig:(l.startRaw||"-")+" – "+(l.endRaw||"-"),start:null,end:null};
+openEdit(rec,parseDate(l.dateRaw))}
 function csvCell(v){v=String(v==null?"":v);return /[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}
 function downloadLog(){const list=filteredLog();
 const head=["แถวในชีต","พขร.","สาขา","Date (ค่าเดิม)","แหล่งเวลา","เวลาเริ่ม (ค่าเดิม)","เวลาจบ (ค่าเดิม)","ประเภท","สาเหตุ"];

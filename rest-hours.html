@@ -45,19 +45,13 @@ tbody tr:nth-child(even) td{background:#fafcfb}tr:hover td{background:#f0f6f2!im
 <div class="k"><small>งานทั้งหมด</small><b id="jobs">0</b></div>
 <div class="k bad"><small>งานทำเกิน 14 ชม.</small><b id="over">0</b></div>
 </div>
-<div class="box"><h2>ตัวกรอง</h2>
+<div class="box"><h2>ชั่วโมงทำงานและเวลาพักระหว่างงาน</h2>
 <div class="controls"><input id="search" placeholder="ค้นหาชื่อ พขร.">
-<select id="branch"><option value="all">ทุกสาขา</option></select></div></div>
-<div class="box"><h2>รอบพักระหว่างงาน</h2>
-<div class="controls">
-<select id="status"><option value="all">ทุกสถานะ</option><option value="ผ่าน">ผ่าน</option><option value="ไม่ผ่าน">ไม่ผ่าน</option></select></div>
-<div class="wrap"><table><thead><tr><th>พขร.</th><th>สาขา</th><th>จบงานก่อนหน้า</th><th>เริ่มงานถัดไป</th><th>เวลาพัก</th><th>สถานะ</th></tr></thead>
-<tbody id="rows"><tr><td colspan="6">กำลังโหลดข้อมูล...</td></tr></tbody></table></div></div>
-<div class="box"><h2>ชั่วโมงการทำงาน</h2>
-<div class="controls">
-<select id="workStatus"><option value="all">ทุกสถานะ</option><option value="over">เกิน 14 ชม.</option><option value="ok">ไม่เกิน 14 ชม.</option></select></div>
-<div class="wrap"><table><thead><tr><th>พขร.</th><th>สาขา</th><th>แหล่งเวลา</th><th>เริ่มงาน</th><th>จบงาน</th><th>ชั่วโมงทำงาน</th><th>สถานะ</th></tr></thead>
-<tbody id="workRows"><tr><td colspan="7">กำลังโหลดข้อมูล...</td></tr></tbody></table></div></div>
+<select id="branch"><option value="all">ทุกสาขา</option></select>
+<select id="workStatus"><option value="all">ชั่วโมงทำงาน: ทั้งหมด</option><option value="over">เกิน 14 ชม.</option><option value="ok">ไม่เกิน 14 ชม.</option></select>
+<select id="status"><option value="all">เวลาพัก: ทั้งหมด</option><option value="ผ่าน">พักผ่าน</option><option value="ไม่ผ่าน">พักไม่ผ่าน</option></select></div>
+<div class="wrap"><table><thead><tr><th>พขร.</th><th>สาขา</th><th>แหล่งเวลา</th><th>เริ่มงาน</th><th>จบงาน</th><th>ชั่วโมงทำงาน</th><th>สถานะทำงาน</th><th>พักก่อนงานถัดไป</th><th>สถานะพัก</th></tr></thead>
+<tbody id="workRows"><tr><td colspan="9">กำลังโหลดข้อมูล...</td></tr></tbody></table></div></div>
 </div>
 <script>
 "use strict";
@@ -134,7 +128,8 @@ records=nr;records.sort((a,b)=>a.driver.localeCompare(b.driver,"th")||a.start-b.
 restRows=[];
 for(let i=0;i<records.length-1;i++){const c=records[i],n=records[i+1];if(c.driver!==n.driver)continue;
 const ms=n.start.getTime()-c.end.getTime();if(ms<0)continue;
-restRows.push({driver:c.driver,branch:n.branch||c.branch,previousEnd:c.end,nextStart:n.start,ms,status:ms>=REST_LIMIT_MS?"ผ่าน":"ไม่ผ่าน"})}
+const st=ms>=REST_LIMIT_MS?"ผ่าน":"ไม่ผ่าน";c.restMs=ms;c.restStatus=st;
+restRows.push({driver:c.driver,branch:n.branch||c.branch,previousEnd:c.end,nextStart:n.start,ms,status:st})}
 updateBranches();render();
 const skipped=stats.missingDriver+stats.missingTimes+stats.invalidDates;
 message.textContent="โหลดข้อมูลสำเร็จ: "+records.length+" รายการงาน | "+restRows.length+" รอบพัก | ข้ามแถว "+skipped+" แถว | ไม่มีชื่อ "+stats.missingDriver+" | ไม่มีคู่เวลา "+stats.missingTimes+" | วันที่/เวลาไม่ถูกต้อง "+stats.invalidDates+" | คู่เวลาไม่ครบ "+stats.incompletePairs;
@@ -157,19 +152,19 @@ const overCount=records.filter(r=>r.end-r.start>WORK_LIMIT_MS).length;
 document.getElementById("drivers").textContent=drivers.size;document.getElementById("passed").textContent=passed;document.getElementById("failed").textContent=failed;
 document.getElementById("rate").textContent=(restRows.length?Math.round(passed/restRows.length*100):0)+"%";
 document.getElementById("jobs").textContent=records.length;document.getElementById("over").textContent=overCount;
-const filtered=restRows.filter(r=>r.driver.toLowerCase().includes(search)&&(status==="all"||r.status===status)&&(branch==="all"||r.branch===branch));
-const tbody=document.getElementById("rows");tbody.innerHTML="";
-if(!filtered.length)emptyRow(tbody,6);
-filtered.forEach(r=>{const tr=document.createElement("tr");
-[r.driver,r.branch||"-",dateText(r.previousEnd),dateText(r.nextStart),duration(r.ms),r.status].forEach((v,i)=>{const td=document.createElement("td");td.textContent=v;if(i===5)td.className=r.status==="ผ่าน"?"pass":"fail";tr.appendChild(td)});
-tbody.appendChild(tr)});
 const works=records.filter(r=>{const over=(r.end-r.start)>WORK_LIMIT_MS;
-return r.driver.toLowerCase().includes(search)&&(branch==="all"||r.branch===branch)&&(workStatus==="all"||(workStatus==="over"?over:!over))});
+return r.driver.toLowerCase().includes(search)&&(branch==="all"||r.branch===branch)
+&&(workStatus==="all"||(workStatus==="over"?over:!over))&&(status==="all"||r.restStatus===status)});
 const wbody=document.getElementById("workRows");wbody.innerHTML="";
-if(!works.length)emptyRow(wbody,7);
-works.forEach(r=>{const ms=r.end-r.start,over=ms>WORK_LIMIT_MS,tr=document.createElement("tr");
-[r.driver,r.branch||"-",r.source,dateText(r.start),dateText(r.end),duration(ms),over?"เกิน 14 ชม.":"ปกติ"].forEach((v,i)=>{const td=document.createElement("td");td.textContent=v;
-if(i===5&&over)td.className="fail";if(i===6)td.className=over?"fail":"pass";tr.appendChild(td)});
+if(!works.length)emptyRow(wbody,9);
+works.forEach(r=>{const ms=r.end-r.start,over=ms>WORK_LIMIT_MS,tr=document.createElement("tr"),hasRest=r.restMs!==undefined;
+[r.driver,r.branch||"-",r.source,dateText(r.start),dateText(r.end),duration(ms),over?"เกิน 14 ชม.":"ปกติ",
+hasRest?duration(r.restMs):"-",hasRest?r.restStatus:"-"].forEach((v,i)=>{const td=document.createElement("td");td.textContent=v;
+if(i===5&&over)td.className="fail";
+if(i===6)td.className=over?"fail":"pass";
+if(i===7&&hasRest&&r.restStatus==="ไม่ผ่าน")td.className="fail";
+if(i===8&&hasRest)td.className=r.restStatus==="ผ่าน"?"pass":"fail";
+tr.appendChild(td)});
 wbody.appendChild(tr)})}
 document.getElementById("reload").addEventListener("click",loadData);
 document.getElementById("search").addEventListener("input",render);

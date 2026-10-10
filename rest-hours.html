@@ -171,8 +171,8 @@ for(let i=0;i<records.length-1;i++){const c=records[i],n=records[i+1];if(c.drive
 const ms=n.start.getTime()-c.end.getTime();if(ms<0)continue;
 const st=ms>=REST_LIMIT_MS?"ผ่าน":"ไม่ผ่าน";c.restMs=ms;c.restStatus=st;
 restRows.push({driver:c.driver,branch:n.branch||c.branch,previousEnd:c.end,nextStart:n.start,ms,status:st})}}
-const API_URL="";   /* วางลิงก์ Web app (ลงท้ายด้วย /exec) จาก Apps Script ที่นี่ */
-const API_TOKEN=""; /* ต้องตรงกับ TOKEN ใน Apps Script */
+const API_URL="https://script.google.com/macros/s/AKfycbwfvwpMvzuvHAbaqMsTlurEhp4u8HCEvI5190yHc8J5TyOxhV6fd4WHR7T-_M9YDQQX/exec";   /* วางลิงก์ Web app (ลงท้ายด้วย /exec) จาก Apps Script ที่นี่ */
+const API_TOKEN="PTGLG2026"; /* ต้องตรงกับ TOKEN ใน Apps Script */
 const OVR_KEY="restHoursOverrides.v1";
 let overrides={};
 function loadLocal(){try{return JSON.parse(localStorage.getItem(OVR_KEY)||"{}")||{}}catch(e){return{}}}

@@ -61,8 +61,9 @@ dialog button.primary{background:var(--g8);color:#fff;border-color:var(--g8)}dia
 <div class="controls"><input id="search" placeholder="ค้นหาชื่อ พขร.">
 <select id="branch"><option value="all">ทุกสาขา</option></select>
 <select id="workStatus"><option value="all">ชั่วโมงทำงาน: ทั้งหมด</option><option value="over">เกิน 14 ชม.</option><option value="ok">ไม่เกิน 14 ชม.</option></select>
-<select id="status"><option value="all">เวลาพัก: ทั้งหมด</option><option value="ผ่าน">พักผ่าน</option><option value="ไม่ผ่าน">พักไม่ผ่าน</option></select></div>
-<div class="wrap"><table><thead><tr><th>พขร.</th><th>สาขา</th><th>แหล่งเวลา</th><th>เริ่มงาน</th><th>จบงาน</th><th>ชั่วโมงทำงาน</th><th>สถานะทำงาน</th><th>พักก่อนงานถัดไป</th><th>สถานะพัก</th><th>จัดการ</th></tr></thead>
+<select id="status"><option value="all">เวลาพัก: ทั้งหมด</option><option value="ผ่าน">พักผ่าน</option><option value="ไม่ผ่าน">พักไม่ผ่าน</option></select>
+<select id="sortWork"><option value="default">เรียงลำดับ: ตามชื่อ/เวลา</option><option value="desc">ชั่วโมงทำงาน มาก → น้อย</option><option value="asc">ชั่วโมงทำงาน น้อย → มาก</option></select></div>
+<div class="wrap"><table><thead><tr><th>พขร.</th><th>สาขา</th><th>แหล่งเวลา</th><th>เริ่มงาน</th><th>จบงาน</th><th id="thWork" style="cursor:pointer" title="คลิกเพื่อเรียงลำดับ">ชั่วโมงทำงาน <span id="sortArrow"></span></th><th>สถานะทำงาน</th><th>พักก่อนงานถัดไป</th><th>สถานะพัก</th><th>จัดการ</th></tr></thead>
 <tbody id="workRows"><tr><td colspan="10">กำลังโหลดข้อมูล...</td></tr></tbody></table></div></div>
 <dialog id="editDlg"><form id="editForm" novalidate>
 <h3 id="editTitle">แก้ไขเวลา</h3><p id="editSub"></p>
@@ -162,8 +163,8 @@ for(let i=0;i<records.length-1;i++){const c=records[i],n=records[i+1];if(c.drive
 const ms=n.start.getTime()-c.end.getTime();if(ms<0)continue;
 const st=ms>=REST_LIMIT_MS?"ผ่าน":"ไม่ผ่าน";c.restMs=ms;c.restStatus=st;
 restRows.push({driver:c.driver,branch:n.branch||c.branch,previousEnd:c.end,nextStart:n.start,ms,status:st})}}
-const API_URL="https://script.google.com/macros/s/AKfycbwfvwpMvzuvHAbaqMsTlurEhp4u8HCEvI5190yHc8J5TyOxhV6fd4WHR7T-_M9YDQQX/exec";   /* วางลิงก์ Web app (ลงท้ายด้วย /exec) จาก Apps Script ที่นี่ */
-const API_TOKEN="PTGLG2026"; /* ต้องตรงกับ TOKEN ใน Apps Script */
+const API_URL="";   /* วางลิงก์ Web app (ลงท้ายด้วย /exec) จาก Apps Script ที่นี่ */
+const API_TOKEN=""; /* ต้องตรงกับ TOKEN ใน Apps Script */
 const OVR_KEY="restHoursOverrides.v1";
 let overrides={};
 function loadLocal(){try{return JSON.parse(localStorage.getItem(OVR_KEY)||"{}")||{}}catch(e){return{}}}
@@ -228,6 +229,10 @@ document.getElementById("jobs").textContent=records.length;document.getElementBy
 const works=records.filter(r=>{const over=(r.end-r.start)>WORK_LIMIT_MS;
 return r.driver.toLowerCase().includes(search)&&(branch==="all"||r.branch===branch)
 &&(workStatus==="all"||(workStatus==="over"?over:!over))&&(status==="all"||r.restStatus===status)});
+const sortMode=document.getElementById("sortWork").value;
+if(sortMode==="desc")works.sort((a,b)=>(b.end-b.start)-(a.end-a.start));
+else if(sortMode==="asc")works.sort((a,b)=>(a.end-a.start)-(b.end-b.start));
+document.getElementById("sortArrow").textContent=sortMode==="desc"?"▼":sortMode==="asc"?"▲":"";
 const wbody=document.getElementById("workRows");wbody.innerHTML="";
 if(!works.length)emptyRow(wbody,10);
 works.forEach(r=>{const ms=r.end-r.start,over=ms>WORK_LIMIT_MS,tr=document.createElement("tr"),hasRest=r.restMs!==undefined;
@@ -248,6 +253,9 @@ document.getElementById("reload").addEventListener("click",loadData);
 document.getElementById("search").addEventListener("input",render);
 document.getElementById("status").addEventListener("change",render);
 document.getElementById("workStatus").addEventListener("change",render);
+document.getElementById("sortWork").addEventListener("change",render);
+document.getElementById("thWork").addEventListener("click",()=>{const s=document.getElementById("sortWork");
+s.value=s.value==="default"?"desc":s.value==="desc"?"asc":"default";render()});
 document.getElementById("branch").addEventListener("change",render);
 loadData();
 </script></body></html>

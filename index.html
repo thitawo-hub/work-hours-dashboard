@@ -129,7 +129,7 @@ if(tline){const y=H-pb-tline/mx*(H-pb-18);s+=`<line x1="0" x2="${W}" y1="${y}" y
 if(!e.length)s='<text x="10" y="30" font-size="12">ไม่มีข้อมูล LOCO ในช่วงนี้</text>';
 $(id).setAttribute("viewBox",`0 0 ${W} ${H}`);$(id).innerHTML=s}
 const mCars=b=>uniq(MC.filter(x=>!b||x.branch===b).map(x=>x.plate));
-const mDrv=(b,pos)=>{const to=$("to").value;return uniq(MD.filter(x=>(!b||x.branch===b)&&(!pos||(pos==="OIL"?x.pos.trim().toUpperCase()==="OIL":x.pos.replace(/\s/g,"").toUpperCase()===pos))&&!(x.leave&&to&&dk(x.leave)<=to)).map(x=>x.name))};
+const mDrv=(b,pos)=>{const to=$("to").value;return uniq(MD.filter(x=>(!b||x.branch===b)&&(!pos||(pos==="OIL"?x.pos.trim().toUpperCase()==="OIL":(pos==="22W"?/^(22W|MHC)$/:new RegExp("^"+pos+"$")).test(x.pos.replace(/\s/g,"").toUpperCase())))&&!(x.leave&&to&&dk(x.leave)<=to)).map(x=>x.name))};
 function locoTable(R){const bs=[...new Set(R.map(r=>r.branch))].sort((a,b)=>a.localeCompare(b,"th"));
 const dc=(a,t)=>t==null?"<td>-</td><td>-</td>":`<td>${fmt(t)}</td><td class="${a>=t?"good":"bad"}">${fmt(a-t)}</td>`;
 const row=(n,p,tp,c,tc,tag)=>`<tr><${tag} class="l">${n}</${tag}><${tag}>${fmt(p)}</${tag}>${dc(p,tp)}<${tag}>${fmt(c)}</${tag}>${dc(c,tc)}<${tag}>${c?fmt(p/c,3):"-"}</${tag}></tr>`;
@@ -144,9 +144,9 @@ function crew(R,b){let h='<tr><th class="l">รายการ</th><th>จริ
 const sec=t=>`<tr><td colspan="4" style="background:#f0f6f2;font-weight:700;color:var(--g8);text-align:left">${t}</td></tr>`;
 const act=(g,pos)=>{const G=R.filter(r=>r.group===g&&(g!=="LOCO"||r.car));let c=uniq(G.map(r=>r.car)),p=uniq(G.flatMap(r=>[r.driver,r.driver2]));if(g==="COCO"&&MC.length)c=mCars(b);if(MD.length)p=mDrv(b,pos);return[c,p]};
 const grp=(g,pos)=>{const[c,p]=act(g,pos),tp=tgt("PERSON",g,b),tc=tgt("CAR",g,b),ra=c?p/c:0,tr=tp!=null&&tc?tp/tc:null;
-h+=`<tr><td class="l">พขร. ${g} (${pos})</td><td>${fmt(p)} คน</td>${cmp(p,tp)}</tr><tr><td class="l">จำนวนรถ ${g}</td><td>${fmt(c)} คัน</td>${cmp(c,tc)}</tr>`;
+h+=`<tr><td class="l">พขร. ${g} (${pos==="22W"?"22W + MHC":pos})</td><td>${fmt(p)} คน</td>${cmp(p,tp)}</tr><tr><td class="l">จำนวนรถ ${g}</td><td>${fmt(c)} คัน</td>${cmp(c,tc)}</tr>`;
 h+=`<tr><td class="l">Driver Ratio ${g}</td><td>${c?fmt(ra,3):"No data"}</td>${tr==null?"<td>No data</td><td>-</td>":`<td>${fmt(tr,3)}</td><td class="${ra>=tr?"good":"bad"}">${fmt(ra-tr,3)}</td>`}</tr>`;return{p,tp}};
-h+=sec("COCO · พขร. ตำแหน่ง 22W");const co=grp("COCO","22W");
+h+=sec("COCO · พขร. ตำแหน่ง 22W + MHC");const co=grp("COCO","22W");
 const po=MD.length?mDrv(b,"OIL"):null;
 if(co.tp!=null){const d=co.p-co.tp-(po||0);h+=`<tr><td class="l">ต้องหา พขร. COCO เพิ่ม<br><small style="color:var(--mut)">Actual − Target − Oil</small></td><td colspan="3" class="${d>=0?"good":"bad"}" style="font-size:15px">${d<0?"ต้องหาเพิ่ม "+fmt(-d)+" คน":"ไม่ต้องหาเพิ่ม (เกิน "+fmt(d)+" คน)"}<br><small style="color:var(--mut);font-weight:400">${fmt(co.p)} − ${fmt(co.tp)} − ${fmt(po||0)} = ${fmt(d)}</small></td></tr>`}
 h+=sec("Oil · พขร. ที่มาช่วยวิ่งงาน COCO")+`<tr><td class="l">พขร. Oil</td><td colspan="3">${po==null?"- (ต้องตั้งค่า Master driver)":fmt(po)+" คน"}</td></tr>`;

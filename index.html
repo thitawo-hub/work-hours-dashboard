@@ -69,7 +69,7 @@ const MAX_TRIP_KM=3000; // ระยะทางต่อแถวที่เ�
 // ใส่ gid ของแท็บ Master car / Master driver (ดูจาก URL ตอนเปิดแท็บ: ...#gid=ตัวเลข)
 const MASTER_CAR_GID="1668913986", MASTER_DRIVER_GID="459940419";
 const SHEET_BASE=DATA_URL.split("gid=")[0];
-let rows=[],targets=[],bad=0,MC=[],MD=[];
+let rows=[],targets=[],bad=0,MC=[],MD=[],masterWarn="";
 const $=id=>document.getElementById(id),tx=v=>String(v??"").trim();
 const num=v=>{const n=Number(tx(v).replace(/[,฿\s]/g,""));return isFinite(n)?n:0};
 const fmt=(v,d=0)=>Number(v||0).toLocaleString("th-TH",{maximumFractionDigits:d});
@@ -108,7 +108,7 @@ const proj=km/days*dim;
 const kmT=(()=>{const bs=b?[b]:[...new Set(R.map(r=>r.branch))];let s=0;bs.forEach(x=>{const c=uniq(R.filter(r=>r.branch===x&&r.group==="COCO").map(r=>r.car));s+=(tgt("KM","COCO",x)||0)*c});return s})();
 $("kKm").textContent=fmt(km);$("kProj").textContent=fmt(proj);$("kTgt").textContent=kmT?fmt(kmT):"No data";
 $("kDay").textContent=fmt(km/days);$("kCar").textContent=fmt(cars?km/cars:0);$("kTrip").textContent=fmt(R.length);
-$("status").textContent=`รอบ ${dm(cyc[0])} – ${dm(cyc[1])} ${cyc[1].getFullYear()+543} · ข้อมูล ${fmt(R.length)} เที่ยว · ${fmt(days)} วัน`+(bad?` · ไม่นำมารวม ${bad} แถวที่ระยะทางผิดปกติ (>${MAX_TRIP_KM} กม. หรือติดลบ)`:"");
+$("status").textContent=`รอบ ${dm(cyc[0])} – ${dm(cyc[1])} ${cyc[1].getFullYear()+543} · ข้อมูล ${fmt(R.length)} เที่ยว · ${fmt(days)} วัน`+(bad?` · ไม่นำมารวม ${bad} แถวที่ระยะทางผิดปกติ (>${MAX_TRIP_KM} กม. หรือติดลบ)`:"")+(masterWarn?" · "+masterWarn:"");
 chart(R,kmT/dim);dailyBars("cLocoCar",R,"LOCO",r=>[r.car],tgt("CAR","LOCO",b));dailyBars("cLocoPer",R,"LOCO",r=>[r.driver,r.driver2],tgt("PERSON","LOCO",b));crew(R,b);locoTable(R);carTable(R,days,dim,b);drvTable(R)}
 function chart(R,tline){const m=new Map();R.forEach(r=>m.set(r.k,(m.get(r.k)||0)+r.km));
 const e=[...m].sort((a,b)=>a[0]<b[0]?-1:1),W=1000,H=240,pl=50,pb=26,mx=Math.max(1,tline,...e.map(x=>x[1])),bw=(W-pl)/e.length;
@@ -161,10 +161,12 @@ $("tDrv").innerHTML='<tr><th class="l">พนักงานขับรถ</th>
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 async function get(u){const r=await fetch(u,{cache:"no-store"});if(!r.ok)throw new Error("HTTP "+r.status);return csv(await r.text())}
 async function load(){$("status").textContent="กำลังโหลด...";
-try{const opt=g=>g?get(SHEET_BASE+"gid="+g+"&single=true&output=csv").catch(()=>[]):Promise.resolve([]);
-const [d,t,mc,md]=await Promise.all([get(DATA_URL),get(TARGET_URL),opt(MASTER_CAR_GID),opt(MASTER_DRIVER_GID)]);
+try{const fail=[];const opt=(g,name)=>g?get(SHEET_BASE+"gid="+g+"&single=true&output=csv").catch(e=>{fail.push(name+" ("+e.message+")");return[]}):Promise.resolve([]);
+const [d,t,mc,md]=await Promise.all([get(DATA_URL),get(TARGET_URL),opt(MASTER_CAR_GID,"Master car"),opt(MASTER_DRIVER_GID,"Master driver")]);
 MC=mc.map(r=>({branch:tx(r["สาขา"]),plate:pl(r["ทะเบียน"])||pl(r["เบอร์รถ"]),type:tx(r["ประเภทรถ"])})).filter(x=>x.plate);
 MD=md.map(r=>({branch:tx(r["สาขา"]),name:nm(r["ชื่อ พขร."]),pos:tx(r["ตำแหน่ง"])||tx(Object.values(r)[3]),leave:pdate(r["วันที่ลาออก"])})).filter(x=>x.name);
+const w=[...fail];if(MASTER_DRIVER_GID&&!MD.length&&!w.some(x=>x.startsWith("Master driver")))w.push("Master driver ไม่มีข้อมูล");if(MASTER_CAR_GID&&!MC.length&&!w.some(x=>x.startsWith("Master car")))w.push("Master car ไม่มีข้อมูล");
+masterWarn=w.length?"⚠ โหลดไม่สำเร็จ: "+w.join(", "):"";
 const all=d.map(norm);bad=all.filter(r=>r.km<0||r.km>MAX_TRIP_KM).length;rows=all.filter(r=>r.km>=0&&r.km<=MAX_TRIP_KM);
 targets=t.map(normT);
 const sb=$("branch"),pv=sb.value;sb.innerHTML='<option value="">ทุกสาขา</option>'+[...new Set(rows.filter(r=>!r.help).map(r=>r.branch))].sort().map(x=>`<option>${esc(x)}</option>`).join("");sb.value=pv;

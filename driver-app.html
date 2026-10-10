@@ -43,6 +43,7 @@ const URL_CSV="https://docs.google.com/spreadsheets/d/e/2PACX-1vSWLQuTDK81qBHrVG
 const $=id=>document.getElementById(id),tx=v=>String(v??"").replace(/\s+/g," ").trim();
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let blocks=[];
+const BRANCH_NAMES={TL:"ท่าลาน",HY:"หาดใหญ่",BPI:"บางปะอิน",BP:"บางพลี"}; /* ชื่อไทยที่แสดงต่อท้ายรหัสสาขา แก้หรือเพิ่มได้ */
 function parseRows(s){const out=[];let r=[],f="",q=false;s=s.replace(/^\uFEFF/,"");
 for(let i=0;i<s.length;i++){const c=s[i];
 if(q){if(c=='"'){if(s[i+1]=='"'){f+='"';i++}else q=false}else f+=c}
@@ -59,7 +60,7 @@ if(!label)label=rows[h.i].slice(0,h.L).map(tx).filter(Boolean).join(" ");
 const secs=[];let cur=null;
 for(let i=h.i+1;i<end;i++){const r=rows[i],name=tx(r[h.L]),vals=[];for(let d=0;d<cols;d++)vals.push(tx(r[h.L+1+d]));
 if(!name&&!vals.some(Boolean))continue;
-if(/^[A-Za-z]{2,6}$/.test(name)&&!vals.some(Boolean)){cur={name,rows:[]};secs.push(cur);continue}
+if(/^[A-Z]{2,5}$/.test(name)&&!vals.some(Boolean)){cur={name,rows:[]};secs.push(cur);continue}
 if(cur)cur.rows.push({name,vals})}
 blocks.push({label:label||"ช่วงที่ "+(k+1),days,avg,secs})})}
 function cell(v,isAvg){if(v==="")return`<td class="${isAvg?"avg":""}"></td>`;
@@ -72,7 +73,7 @@ const head='<tr><th>รายการ</th>'+b.days.map((d,i)=>`<th class="${b.a
 const body=s.rows.map(r=>{const pc=/%|check|คิดเป็น/i.test(r.name);const red=/ค้างคืน|งานต่อเนื่อง|รอปิด|ยังไม่เปิด/.test(r.name);
 return`<tr class="${pc?"pc":""}"><td>${esc(r.name)}</td>`+r.vals.map((v,i)=>{const isAvg=b.avg&&i===b.days.length-1;
 if(red&&!isAvg&&/^\d+(\.\d+)?$/.test(v)&&Number(v)>0)return`<td class="r">${esc(v)}</td>`;return cell(v,isAvg)}).join("")+"</tr>"}).join("");
-return`<div class="box"><h2>${esc(s.name)}</h2><div class="wrap"><table><thead>${head}</thead><tbody>${body}</tbody></table></div></div>`}).join("")}
+return`<div class="box"><h2>${esc(s.name)}${BRANCH_NAMES[s.name]?" · "+esc(BRANCH_NAMES[s.name]):""}</h2><div class="wrap"><table><thead>${head}</thead><tbody>${body}</tbody></table></div></div>`}).join("")}
 async function load(){const btn=$("reload");btn.disabled=true;$("msg").textContent="กำลังโหลดข้อมูล...";
 try{let res;for(let i=0;i<3;i++){try{res=await fetch(URL_CSV+"&_="+Date.now(),{cache:"no-store"});if(res.ok)break;throw new Error("HTTP "+res.status)}catch(e){if(i===2)throw e;await new Promise(r=>setTimeout(r,800*(i+1)))}}
 const text=await res.text();if(/<html[\s>]/i.test(text.slice(0,500)))throw new Error("ไม่ได้รับ CSV กรุณาตรวจสอบการเผยแพร่แท็บ Driver app");

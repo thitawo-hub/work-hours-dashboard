@@ -30,6 +30,7 @@ tr:hover td{background:#f0f6f2!important}
 td.z{color:#aab5ae}td.r{color:var(--red);font-weight:700}
 td.pg{color:var(--ok);font-weight:700}td.pa{color:var(--amb);font-weight:700}
 tr.pc td:first-child{color:#1d4ed8;font-weight:700}
+th.sun{background:#dc2626;color:#fff}
 td.avg,th.avg{background:var(--g1)!important;font-weight:700}
 @media(max-width:900px){.page{padding:14px}header{padding:14px}}
 </style></head><body>
@@ -43,7 +44,8 @@ const URL_CSV="https://docs.google.com/spreadsheets/d/e/2PACX-1vSWLQuTDK81qBHrVG
 const $=id=>document.getElementById(id),tx=v=>String(v??"").replace(/\s+/g," ").trim();
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let blocks=[];
-const BRANCH_NAMES={TL:"ท่าลาน",HY:"หาดใหญ่",BPI:"บางปะอิน",BP:"บางพลี"}; /* ชื่อไทยที่แสดงต่อท้ายรหัสสาขา แก้หรือเพิ่มได้ */
+const TH_MONTHS=["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
+const BRANCH_NAMES={MK:"มาบข่า",TL:"ท่าลาน",HY:"หาดใหญ่",BPI:"บางปะอิน",BP:"บางพลี"}; /* ชื่อไทยที่แสดงต่อท้ายรหัสสาขา แก้หรือเพิ่มได้ */
 function parseRows(s){const out=[];let r=[],f="",q=false;s=s.replace(/^\uFEFF/,"");
 for(let i=0;i<s.length;i++){const c=s[i];
 if(q){if(c=='"'){if(s[i+1]=='"'){f+='"';i++}else q=false}else f+=c}
@@ -62,14 +64,15 @@ for(let i=h.i+1;i<end;i++){const r=rows[i],name=tx(r[h.L]),vals=[];for(let d=0;d
 if(!name&&!vals.some(Boolean))continue;
 if(/^[A-Z]{2,5}$/.test(name)&&!vals.some(Boolean)){cur={name,rows:[]};secs.push(cur);continue}
 if(cur)cur.rows.push({name,vals})}
-blocks.push({label:label||"ช่วงที่ "+(k+1),days,avg,secs})})}
+blocks.push({label:"",days,avg,secs})});
+blocks.forEach((b,k)=>{const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-(blocks.length-1-k));b.year=d.getFullYear();b.month=d.getMonth();b.label=TH_MONTHS[b.month]+" "+(b.year+543)})}
 function cell(v,isAvg){if(v==="")return`<td class="${isAvg?"avg":""}"></td>`;
 let c=isAvg?"avg":"";if(/%$/.test(v)){const n=parseFloat(v);c+=(n>=100?" pg":" pa")}else if(/^-?\d+(\.\d+)?$/.test(v)&&Number(v)===0)c+=" z";return`<td class="${c}">${esc(v)}</td>`}
 function render(){const b=blocks[+$("month").value];const out=$("out");
 if(!b){out.innerHTML="";return}
 if(!b.secs.length){out.innerHTML='<div class="box">ไม่พบแถวหัวสาขา (เช่น MK, TL) ในช่วงนี้</div>';return}
 out.innerHTML=b.secs.map(s=>{
-const head='<tr><th>รายการ</th>'+b.days.map((d,i)=>`<th class="${b.avg&&i===b.days.length-1?"avg":""}">${esc(d)}</th>`).join("")+'</tr>';
+const head='<tr><th>รายการ</th>'+b.days.map((d,i)=>{const sun=/^\d+$/.test(d)&&new Date(b.year,b.month,+d).getDay()===0;return`<th class="${b.avg&&i===b.days.length-1?"avg":""}${sun?" sun":""}">${esc(d)}</th>`}).join("")+'</tr>';
 const body=s.rows.map(r=>{const pc=/%|check|คิดเป็น/i.test(r.name);const red=/ค้างคืน|งานต่อเนื่อง|รอปิด|ยังไม่เปิด/.test(r.name);
 return`<tr class="${pc?"pc":""}"><td>${esc(r.name)}</td>`+r.vals.map((v,i)=>{const isAvg=b.avg&&i===b.days.length-1;
 if(red&&!isAvg&&/^\d+(\.\d+)?$/.test(v)&&Number(v)>0)return`<td class="r">${esc(v)}</td>`;return cell(v,isAvg)}).join("")+"</tr>"}).join("");
